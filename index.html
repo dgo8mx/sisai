@@ -1,0 +1,1395 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>MRV Control · Transparencia SEMARNAT Durango</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;600&family=IBM+Plex+Sans:ital,wght@0,300;0,400;0,500;0,600;1,400&display=swap');
+
+:root {
+  --bg:#0d1117; --surface:#161b22; --surface2:#1c2128; --surface3:#22272e;
+  --border:#21262d; --border2:#30363d;
+  --accent:#238636; --accent-h:#2ea043;
+  --blue:#1f6feb; --blue-h:#388bfd;
+  --warn:#d29922; --danger:#da3633; --danger-h:#f85149;
+  --purple:#8957e5; --purple-h:#bc8cff;
+  --text:#e6edf3; --text2:#c9d1d9; --muted:#7d8590; --muted2:#484f58;
+  --green-bg:#1a4429; --green-t:#3fb950;
+  --yellow-bg:#3a2c10; --yellow-t:#d29922;
+  --red-bg:#3d1717; --red-t:#f85149;
+  --blue-bg:#112040; --blue-t:#58a6ff;
+  --purple-bg:#2d1b69; --purple-t:#bc8cff;
+}
+*{margin:0;padding:0;box-sizing:border-box;}
+html{scroll-behavior:smooth;}
+body{background:var(--bg);color:var(--text);font-family:'IBM Plex Sans',sans-serif;min-height:100vh;font-size:14px;}
+::-webkit-scrollbar{width:6px;height:6px;}
+::-webkit-scrollbar-track{background:var(--bg);}
+::-webkit-scrollbar-thumb{background:var(--border2);border-radius:3px;}
+
+/* ===== TOPBAR ===== */
+.topbar{background:var(--surface);border-bottom:1px solid var(--border);padding:0 20px;height:54px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:100;}
+.logo{display:flex;align-items:center;gap:10px;}
+.logo-icon{width:30px;height:30px;background:linear-gradient(135deg,var(--accent),#196127);border-radius:7px;display:flex;align-items:center;justify-content:center;font-size:15px;flex-shrink:0;}
+.logo-name{font-family:'IBM Plex Mono',monospace;font-size:12px;font-weight:600;letter-spacing:.3px;}
+.logo-sub{font-size:10px;color:var(--muted);}
+.nav{display:flex;gap:2px;}
+.nav-btn{padding:5px 12px;border-radius:6px;cursor:pointer;font-size:13px;color:var(--muted);border:none;background:none;font-family:'IBM Plex Sans',sans-serif;transition:all .15s;}
+.nav-btn:hover{color:var(--text);background:var(--surface2);}
+.nav-btn.active{color:var(--text);background:var(--surface2);border:1px solid var(--border);}
+.topbar-r{display:flex;align-items:center;gap:6px;}
+
+/* ===== BUTTONS ===== */
+.btn{padding:6px 13px;border-radius:6px;cursor:pointer;font-size:12px;font-family:'IBM Plex Sans',sans-serif;font-weight:500;border:1px solid var(--border);transition:all .15s;display:inline-flex;align-items:center;gap:5px;white-space:nowrap;}
+.btn-primary{background:var(--accent);color:#fff;border-color:var(--accent);}
+.btn-primary:hover{background:var(--accent-h);}
+.btn-secondary{background:var(--surface2);color:var(--text2);}
+.btn-secondary:hover{background:var(--surface3);border-color:var(--border2);}
+.btn-blue{background:var(--blue);color:#fff;border-color:var(--blue);}
+.btn-blue:hover{background:var(--blue-h);}
+.btn-danger{background:var(--red-bg);color:var(--red-t);border-color:var(--red-bg);}
+.btn-danger:hover{background:#5a1d1d;}
+.btn-sm{padding:3px 8px;font-size:11px;}
+.btn-icon{padding:5px 7px;}
+
+/* ===== LAYOUT ===== */
+.container{max-width:1640px;margin:0 auto;padding:20px;}
+.view{display:none;animation:fadeIn .2s ease;}
+.view.active{display:block;}
+@keyframes fadeIn{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:none}}
+
+/* ===== SUPABASE CONFIG BANNER ===== */
+.config-banner{background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:14px 18px;margin-bottom:18px;display:flex;align-items:center;gap:14px;flex-wrap:wrap;}
+.config-banner.connected{border-color:var(--green-bg);}
+.config-banner.disconnected{border-color:var(--yellow-bg);}
+.status-dot{width:9px;height:9px;border-radius:50%;flex-shrink:0;}
+.dot-green{background:var(--green-t);box-shadow:0 0 6px var(--green-t);}
+.dot-yellow{background:var(--warn);box-shadow:0 0 6px var(--warn);}
+.dot-red{background:var(--red-t);box-shadow:0 0 6px var(--red-t);}
+.config-label{font-size:12px;font-weight:600;}
+.config-desc{font-size:11px;color:var(--muted);}
+.config-actions{margin-left:auto;display:flex;gap:6px;}
+
+/* ===== STATS ===== */
+.stats-row{display:grid;grid-template-columns:repeat(5,1fr);gap:10px;margin-bottom:18px;}
+.stat{background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:14px 16px;position:relative;overflow:hidden;cursor:default;}
+.stat-accent{position:absolute;top:0;left:0;right:0;height:2px;}
+.stat-label{font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.6px;margin-bottom:6px;}
+.stat-val{font-size:26px;font-weight:600;font-family:'IBM Plex Mono',monospace;line-height:1;}
+.stat-sub{font-size:10px;color:var(--muted);margin-top:4px;}
+.stat-icon{position:absolute;top:12px;right:12px;font-size:20px;opacity:.15;}
+
+/* ===== CHARTS ===== */
+.charts-row{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-bottom:18px;}
+.chart-card{background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:16px;}
+.chart-title{font-size:10px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.6px;margin-bottom:12px;}
+.chart-wrap{position:relative;height:170px;}
+.charts-row2{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:18px;}
+.chart-wrap2{position:relative;height:200px;}
+
+/* ===== TABLE CARD ===== */
+.table-card{background:var(--surface);border:1px solid var(--border);border-radius:10px;overflow:hidden;margin-bottom:16px;}
+.table-header{padding:12px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;background:var(--surface2);}
+.table-title{font-size:13px;font-weight:600;}
+.table-controls{display:flex;gap:6px;align-items:center;flex-wrap:wrap;}
+.search-box{background:var(--bg);border:1px solid var(--border);border-radius:6px;padding:5px 10px;color:var(--text);font-size:12px;font-family:'IBM Plex Sans',sans-serif;width:200px;outline:none;transition:.15s;}
+.search-box:focus{border-color:var(--blue);}
+.sel{background:var(--bg);border:1px solid var(--border);border-radius:6px;padding:5px 8px;color:var(--text);font-size:12px;font-family:'IBM Plex Sans',sans-serif;outline:none;cursor:pointer;}
+.sel option{background:var(--bg);}
+table{width:100%;border-collapse:collapse;}
+th{padding:8px 14px;text-align:left;font-size:10px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;border-bottom:1px solid var(--border);white-space:nowrap;cursor:pointer;user-select:none;background:var(--surface2);}
+th:hover{color:var(--text2);}
+td{padding:9px 14px;border-bottom:1px solid var(--border);vertical-align:middle;font-size:12px;}
+tr:last-child td{border-bottom:none;}
+tr:hover td{background:rgba(255,255,255,.018);cursor:pointer;}
+.table-footer{padding:10px 16px;border-top:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;font-size:11px;color:var(--muted);}
+.pagination{display:flex;gap:3px;}
+.page-btn{padding:3px 9px;border-radius:4px;cursor:pointer;border:1px solid var(--border);background:var(--surface2);color:var(--text2);font-size:11px;font-family:'IBM Plex Sans',sans-serif;transition:.1s;}
+.page-btn.active{background:var(--blue);border-color:var(--blue);color:#fff;}
+.page-btn:hover:not(.active){background:var(--surface3);}
+
+/* ===== BADGES ===== */
+.badge{display:inline-flex;align-items:center;padding:2px 7px;border-radius:20px;font-size:10px;font-weight:600;white-space:nowrap;}
+.bg-green{background:var(--green-bg);color:var(--green-t);}
+.bg-yellow{background:var(--yellow-bg);color:var(--yellow-t);}
+.bg-red{background:var(--red-bg);color:var(--red-t);}
+.bg-blue{background:var(--blue-bg);color:var(--blue-t);}
+.bg-purple{background:var(--purple-bg);color:var(--purple-t);}
+.bg-gray{background:var(--surface3);color:var(--muted);}
+
+/* ===== MODAL ===== */
+.overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.65);z-index:200;align-items:center;justify-content:center;padding:20px;}
+.overlay.open{display:flex;}
+.modal{background:var(--surface);border:1px solid var(--border);border-radius:12px;width:100%;max-width:780px;max-height:92vh;overflow-y:auto;box-shadow:0 20px 60px rgba(0,0,0,.6);}
+.modal-lg{max-width:900px;}
+.modal-sm{max-width:500px;}
+.mhdr{padding:16px 20px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;background:var(--surface2);}
+.mhdr h2{font-size:15px;}
+.mclose{width:26px;height:26px;border-radius:5px;background:var(--surface3);border:1px solid var(--border);cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:14px;color:var(--muted);transition:.15s;}
+.mclose:hover{color:var(--text);}
+.mbody{padding:20px;}
+.mfooter{padding:12px 20px;border-top:1px solid var(--border);display:flex;justify-content:flex-end;gap:8px;background:var(--surface2);}
+
+/* ===== MODAL TABS ===== */
+.mtabs{display:flex;border-bottom:1px solid var(--border);margin-bottom:16px;}
+.mtab{padding:9px 14px;cursor:pointer;font-size:12px;color:var(--muted);border-bottom:2px solid transparent;transition:.15s;}
+.mtab.active{color:var(--text);border-bottom-color:var(--blue);}
+.mtab-content{display:none;}
+.mtab-content.active{display:block;}
+
+/* ===== FORM ===== */
+.form-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px;}
+.form-grid3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:14px;}
+.fg{display:flex;flex-direction:column;gap:5px;}
+.fg.full{grid-column:1/-1;}
+.fg label{font-size:10px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;}
+.fi,.fs,.fta{background:var(--bg);border:1px solid var(--border);border-radius:6px;padding:7px 10px;color:var(--text);font-size:12px;font-family:'IBM Plex Sans',sans-serif;outline:none;transition:.15s;width:100%;}
+.fi:focus,.fs:focus,.fta:focus{border-color:var(--blue);}
+.fs option{background:var(--bg);}
+.fta{resize:vertical;min-height:75px;}
+.form-section{font-size:10px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.6px;margin:16px 0 10px;padding-bottom:6px;border-bottom:1px solid var(--border);}
+
+/* ===== DETAIL ===== */
+.detail-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;}
+.di{}
+.di.full{grid-column:1/-1;}
+.di label{font-size:10px;color:var(--muted);display:block;margin-bottom:2px;}
+.di span{font-size:12px;}
+.asunto-box{background:var(--bg);border:1px solid var(--border);border-radius:6px;padding:10px;font-size:12px;line-height:1.7;color:var(--text2);max-height:130px;overflow-y:auto;}
+.detail-section{margin-bottom:18px;}
+.ds-title{font-size:10px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:10px;padding-bottom:5px;border-bottom:1px solid var(--border);}
+
+/* ===== TIMELINE / URGENT ===== */
+.urgentes-list{padding:8px 0;}
+.urgente-item{display:flex;align-items:center;gap:10px;padding:10px 16px;border-bottom:1px solid var(--border);transition:.1s;}
+.urgente-item:last-child{border-bottom:none;}
+.urgente-item:hover{background:rgba(255,255,255,.02);}
+.u-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0;}
+
+/* ===== CONFIG MODAL ===== */
+.config-row{display:flex;align-items:center;gap:10px;margin-bottom:10px;}
+.config-key-display{font-family:'IBM Plex Mono',monospace;font-size:11px;background:var(--bg);border:1px solid var(--border);border-radius:5px;padding:6px 10px;flex:1;color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.info-box{background:var(--blue-bg);border:1px solid #1f3a60;border-radius:7px;padding:12px 14px;font-size:12px;line-height:1.7;color:var(--blue-t);}
+.info-box code{background:rgba(0,0,0,.3);padding:1px 5px;border-radius:3px;font-family:'IBM Plex Mono',monospace;font-size:11px;}
+
+/* ===== ALERT TOAST ===== */
+.toast{display:none;position:fixed;bottom:20px;right:20px;z-index:400;padding:11px 18px;border-radius:8px;font-size:13px;font-weight:500;animation:toastIn .2s ease;max-width:320px;}
+.toast.success{background:var(--accent);color:#fff;}
+.toast.error{background:var(--danger);color:#fff;}
+.toast.info{background:var(--blue);color:#fff;}
+@keyframes toastIn{from{transform:translateY(14px);opacity:0}to{transform:none;opacity:1}}
+
+/* ===== LOADING ===== */
+.loader{display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:500;align-items:center;justify-content:center;}
+.loader.show{display:flex;}
+.spinner{width:36px;height:36px;border:3px solid var(--border);border-top-color:var(--blue);border-radius:50%;animation:spin .7s linear infinite;}
+@keyframes spin{to{transform:rotate(360deg)}}
+
+/* ===== EMPTY STATE ===== */
+.empty{text-align:center;padding:48px 20px;color:var(--muted);}
+.empty-icon{font-size:36px;margin-bottom:10px;}
+
+/* ===== VIEW HEADER ===== */
+.vh{display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;}
+.vh-title{font-size:17px;font-weight:600;}
+.vh-sub{font-size:11px;color:var(--muted);margin-top:2px;}
+.vh-actions{display:flex;gap:6px;align-items:center;}
+
+/* ===== SYNC STATUS ===== */
+.sync-bar{display:flex;align-items:center;gap:8px;font-size:11px;color:var(--muted);margin-bottom:14px;padding:8px 12px;background:var(--surface);border:1px solid var(--border);border-radius:7px;}
+.sync-item{display:flex;align-items:center;gap:5px;}
+
+/* ===== RESPONSIVE ===== */
+@media(max-width:1100px){.stats-row{grid-template-columns:repeat(3,1fr)}.charts-row{grid-template-columns:1fr 1fr}}
+@media(max-width:768px){.stats-row{grid-template-columns:1fr 1fr}.charts-row{grid-template-columns:1fr}.form-grid,.form-grid3{grid-template-columns:1fr}.nav{display:none}.charts-row2{grid-template-columns:1fr}}
+
+/* ===== MISC ===== */
+.mono{font-family:'IBM Plex Mono',monospace;font-size:11px;}
+.truncate{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.muted{color:var(--muted);}
+.tbl-overflow{overflow-x:auto;}
+.nobr{white-space:nowrap;}
+</style>
+</head>
+<body>
+
+<!-- LOADER -->
+<div class="loader" id="loader"><div class="spinner"></div></div>
+<!-- TOAST -->
+<div class="toast" id="toast"></div>
+
+<!-- TOPBAR -->
+<div class="topbar">
+  <div class="logo">
+    <div class="logo-icon">🌿</div>
+    <div>
+      <div class="logo-name">SEMARNAT · MRV Control</div>
+      <div class="logo-sub">Durango OR-130 · Unidad de Gestión Ambiental</div>
+    </div>
+  </div>
+  <div class="nav">
+    <button class="nav-btn active" onclick="goView('dashboard')">Dashboard</button>
+    <button class="nav-btn" onclick="goView('correspondencia')">Correspondencia</button>
+    <button class="nav-btn" onclick="goView('sisai')">SISAI / PTN</button>
+    <button class="nav-btn" onclick="goView('reportes')">Reportes</button>
+  </div>
+  <div class="topbar-r">
+    <button class="btn btn-secondary btn-sm" id="sync-btn" onclick="syncAll()" title="Sincronizar con Supabase">⟳ Sync</button>
+    <button class="btn btn-secondary btn-sm" onclick="openConfigModal()">⚙ Supabase</button>
+    <button class="btn btn-secondary btn-sm" onclick="exportCSV()">↓ CSV</button>
+    <button class="btn btn-primary btn-sm" onclick="openNewModal()">＋ Nueva</button>
+  </div>
+</div>
+
+<!-- =============================== DASHBOARD =============================== -->
+<div class="view active" id="view-dashboard">
+<div class="container">
+
+  <div class="sync-bar">
+    <div class="sync-item"><div class="status-dot" id="sb-dot"></div><span id="sb-status">Sin configurar</span></div>
+    <span>·</span>
+    <div class="sync-item"><span>Total registros:</span><strong id="total-regs" style="color:var(--text)">0</strong></div>
+    <span>·</span>
+    <div class="sync-item"><span>Última sync:</span><span id="last-sync">—</span></div>
+    <span style="margin-left:auto;font-size:10px;" id="dash-fecha">—</span>
+  </div>
+
+  <div class="stats-row">
+    <div class="stat"><div class="stat-accent" style="background:var(--blue)"></div><div class="stat-icon">📋</div>
+      <div class="stat-label">Total solicitudes</div><div class="stat-val" id="s-total">0</div><div class="stat-sub">Ambos módulos</div></div>
+    <div class="stat"><div class="stat-accent" style="background:var(--green-t)"></div><div class="stat-icon">✅</div>
+      <div class="stat-label">Concluidas / Cerradas</div><div class="stat-val" id="s-done">0</div><div class="stat-sub">Resueltas</div></div>
+    <div class="stat"><div class="stat-accent" style="background:var(--warn)"></div><div class="stat-icon">⏳</div>
+      <div class="stat-label">En proceso / Trámite</div><div class="stat-val" id="s-proceso">0</div><div class="stat-sub">En seguimiento</div></div>
+    <div class="stat"><div class="stat-accent" style="background:var(--red-t)"></div><div class="stat-icon">⚠️</div>
+      <div class="stat-label">Abiertas / Urgentes</div><div class="stat-val" id="s-open">0</div><div class="stat-sub">Requieren acción</div></div>
+    <div class="stat"><div class="stat-accent" style="background:var(--purple-h)"></div><div class="stat-icon">🔒</div>
+      <div class="stat-label">SISAI / PTN</div><div class="stat-val" id="s-sisai">0</div><div class="stat-sub">Plataforma Nacional</div></div>
+  </div>
+
+  <div class="charts-row">
+    <div class="chart-card"><div class="chart-title">Estado por módulo</div><div class="chart-wrap"><canvas id="ch-estado"></canvas></div></div>
+    <div class="chart-card"><div class="chart-title">Área temática</div><div class="chart-wrap"><canvas id="ch-area"></canvas></div></div>
+    <div class="chart-card"><div class="chart-title">Modalidad SISAI / PTN</div><div class="chart-wrap"><canvas id="ch-mod"></canvas></div></div>
+  </div>
+
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
+    <div class="table-card">
+      <div class="table-header"><span class="table-title">⚠️ Atención inmediata</span></div>
+      <div id="urgentes-container"><div class="empty"><div class="empty-icon">✅</div><p>Sin solicitudes urgentes</p></div></div>
+    </div>
+    <div class="table-card">
+      <div class="table-header"><span class="table-title">🕐 Actividad reciente</span></div>
+      <div id="reciente-container"></div>
+    </div>
+  </div>
+
+</div></div>
+
+<!-- =============================== CORRESPONDENCIA =============================== -->
+<div class="view" id="view-correspondencia">
+<div class="container">
+  <div class="vh">
+    <div><div class="vh-title">Correspondencia</div><div class="vh-sub">Solicitudes de información por oficio y documentación legal</div></div>
+    <div class="vh-actions">
+      <button class="btn btn-secondary btn-sm" onclick="syncAll()">⟳ Sincronizar</button>
+      <button class="btn btn-primary btn-sm" onclick="openNewModal('correspondencia')">＋ Nueva</button>
+    </div>
+  </div>
+  <div class="table-card">
+    <div class="table-header">
+      <span class="table-title" id="corr-count">— registros</span>
+      <div class="table-controls">
+        <input class="search-box" id="q-corr" placeholder="🔍 Folio, promovente, municipio..." oninput="filt('corr')">
+        <select class="sel" id="f-corr-st" onchange="filt('corr')"><option value="">Estado</option><option>Concluido</option><option>En proceso</option></select>
+        <select class="sel" id="f-corr-ar" onchange="filt('corr')"><option value="">Área</option><option>Aprovechamientos</option><option>RFN</option><option>Vida Silvestre</option><option>Impacto Ambiental</option><option>No maderables</option><option>RFC</option><option>Consulta SNFG</option></select>
+        <select class="sel" id="f-corr-yr" onchange="filt('corr')"><option value="">Año</option><option>2025</option><option>2026</option></select>
+      </div>
+    </div>
+    <div class="tbl-overflow">
+      <table><thead><tr>
+        <th onclick="srt('corr','no')">No.</th>
+        <th onclick="srt('corr','fecha')">Fecha</th>
+        <th onclick="srt('corr','folio1')">Folio</th>
+        <th onclick="srt('corr','promovente')">Promovente</th>
+        <th onclick="srt('corr','municipio')">Municipio</th>
+        <th onclick="srt('corr','area')">Área</th>
+        <th onclick="srt('corr','status')">Estado</th>
+        <th>Modalidad</th>
+        <th>Acciones</th>
+      </tr></thead><tbody id="tb-corr"></tbody></table>
+    </div>
+    <div class="table-footer"><span id="corr-fi">—</span><div class="pagination" id="pg-corr"></div></div>
+  </div>
+</div></div>
+
+<!-- =============================== SISAI =============================== -->
+<div class="view" id="view-sisai">
+<div class="container">
+  <div class="vh">
+    <div><div class="vh-title">SISAI / Plataforma Nacional de Transparencia</div><div class="vh-sub">Solicitudes formales de acceso a la información pública</div></div>
+    <div class="vh-actions">
+      <button class="btn btn-secondary btn-sm" onclick="syncAll()">⟳ Sincronizar</button>
+      <button class="btn btn-primary btn-sm" onclick="openNewModal('sisai')">＋ Nueva</button>
+    </div>
+  </div>
+  <div class="table-card">
+    <div class="table-header">
+      <span class="table-title" id="sisai-count">— registros</span>
+      <div class="table-controls">
+        <input class="search-box" id="q-sisai" placeholder="🔍 Folio SISAI, asunto, dirección..." oninput="filt('sisai')">
+        <select class="sel" id="f-sisai-st" onchange="filt('sisai')"><option value="">Situación</option><option>Cerrado</option><option>Open</option><option>En tramite</option></select>
+        <select class="sel" id="f-sisai-md" onchange="filt('sisai')"><option value="">Modalidad</option><option>PTN</option><option>Oficio</option><option>UC</option></select>
+        <select class="sel" id="f-sisai-yr" onchange="filt('sisai')"><option value="">Año</option><option>2025</option><option>2026</option></select>
+      </div>
+    </div>
+    <div class="tbl-overflow">
+      <table><thead><tr>
+        <th onclick="srt('sisai','no')">No.</th>
+        <th onclick="srt('sisai','fecha')">F. Recibido</th>
+        <th onclick="srt('sisai','folio')">Folio SISAI</th>
+        <th onclick="srt('sisai','modalidad')">Modalidad</th>
+        <th onclick="srt('sisai','situacion')">Situación</th>
+        <th>Estado trámite</th>
+        <th>Dirección / Solicitante</th>
+        <th>Control</th>
+        <th>Acciones</th>
+      </tr></thead><tbody id="tb-sisai"></tbody></table>
+    </div>
+    <div class="table-footer"><span id="sisai-fi">—</span><div class="pagination" id="pg-sisai"></div></div>
+  </div>
+</div></div>
+
+<!-- =============================== REPORTES =============================== -->
+<div class="view" id="view-reportes">
+<div class="container">
+  <div class="vh">
+    <div><div class="vh-title">Reportes y Análisis</div><div class="vh-sub">Métricas de gestión, cumplimiento y seguimiento</div></div>
+    <div class="vh-actions">
+      <button class="btn btn-secondary btn-sm" onclick="exportCSV()">↓ Exportar CSV</button>
+      <button class="btn btn-secondary btn-sm" onclick="window.print()">🖨 Imprimir</button>
+    </div>
+  </div>
+
+  <div class="stats-row">
+    <div class="stat"><div class="stat-accent" style="background:var(--green-t)"></div>
+      <div class="stat-label">Tasa conclusión</div><div class="stat-val" id="r-tasa">0%</div><div class="stat-sub">Cerradas / Total</div></div>
+    <div class="stat"><div class="stat-accent" style="background:var(--blue)"></div>
+      <div class="stat-label">Corr. 2025</div><div class="stat-val" id="r-c25">0</div><div class="stat-sub">Registros del año</div></div>
+    <div class="stat"><div class="stat-accent" style="background:var(--blue)"></div>
+      <div class="stat-label">Corr. 2026</div><div class="stat-val" id="r-c26">0</div><div class="stat-sub">Registros del año</div></div>
+    <div class="stat"><div class="stat-accent" style="background:var(--purple-h)"></div>
+      <div class="stat-label">SISAI 2025</div><div class="stat-val" id="r-s25">0</div><div class="stat-sub">Folios recibidos</div></div>
+    <div class="stat"><div class="stat-accent" style="background:var(--purple-h)"></div>
+      <div class="stat-label">SISAI 2026</div><div class="stat-val" id="r-s26">0</div><div class="stat-sub">Folios recibidos</div></div>
+  </div>
+
+  <div class="charts-row2">
+    <div class="chart-card"><div class="chart-title">Distribución por área temática</div><div class="chart-wrap2"><canvas id="r-ch-area"></canvas></div></div>
+    <div class="chart-card"><div class="chart-title">Estado general de solicitudes</div><div class="chart-wrap2"><canvas id="r-ch-est"></canvas></div></div>
+    <div class="chart-card"><div class="chart-title">Solicitudes por municipio (Top 8)</div><div class="chart-wrap2"><canvas id="r-ch-mun"></canvas></div></div>
+    <div class="chart-card"><div class="chart-title">Evolución mensual de solicitudes</div><div class="chart-wrap2"><canvas id="r-ch-mes"></canvas></div></div>
+  </div>
+
+  <div class="table-card">
+    <div class="table-header"><span class="table-title">Resumen ejecutivo</span></div>
+    <table><thead><tr>
+      <th>Módulo</th><th>Total</th><th>Concluidas</th><th>En proceso</th><th>Sin resolver</th><th>% Cumplimiento</th>
+    </tr></thead><tbody id="tb-resumen"></tbody></table>
+  </div>
+</div></div>
+
+<!-- =============================== MODAL FORM =============================== -->
+<div class="overlay" id="modal-form">
+<div class="modal">
+  <div class="mhdr"><h2 id="mf-title">Nueva Solicitud</h2><div class="mclose" onclick="closeM('modal-form')">✕</div></div>
+  <div class="mbody">
+    <div class="mtabs">
+      <div class="mtab active" onclick="mTab('t-tipo')">Tipo &amp; Estado</div>
+      <div class="mtab" onclick="mTab('t-datos')">Datos generales</div>
+      <div class="mtab" onclick="mTab('t-asunto')">Asunto</div>
+      <div class="mtab" onclick="mTab('t-control')">Control interno</div>
+    </div>
+
+    <div class="mtab-content active" id="t-tipo">
+      <div class="form-grid">
+        <div class="fg"><label>Módulo *</label>
+          <select class="fs" id="ff-modulo">
+            <option value="correspondencia">Correspondencia</option>
+            <option value="sisai">SISAI / PTN</option>
+          </select></div>
+        <div class="fg"><label>Estado / Situación *</label>
+          <select class="fs" id="ff-status">
+            <option value="En proceso">En proceso</option>
+            <option value="Concluido">Concluido</option>
+            <option value="Cerrado">Cerrado</option>
+            <option value="Open">Abierto (Open)</option>
+            <option value="En tramite">En trámite</option>
+            <option value="Urgente">⚠ URGENTE</option>
+          </select></div>
+        <div class="fg"><label>Urgencia</label>
+          <select class="fs" id="ff-urgencia">
+            <option value="Normal">Normal</option>
+            <option value="Alta">Alta prioridad</option>
+            <option value="Urgente">URGENTE</option>
+          </select></div>
+        <div class="fg"><label>Área temática</label>
+          <select class="fs" id="ff-area">
+            <option value="">— Seleccionar —</option>
+            <option>Aprovechamientos</option><option>RFN</option><option>Vida Silvestre</option>
+            <option>Impacto Ambiental</option><option>No maderables</option><option>RFC</option>
+            <option>Consulta SNFG</option><option>Otro</option>
+          </select></div>
+      </div>
+    </div>
+
+    <div class="mtab-content" id="t-datos">
+      <div class="form-grid3">
+        <div class="fg"><label>Fecha recibido</label><input class="fi" type="date" id="ff-fecha"></div>
+        <div class="fg"><label>Folio / No. Control</label><input class="fi" id="ff-folio" placeholder="0002446"></div>
+        <div class="fg"><label>Folio SISAI (si aplica)</label><input class="fi" id="ff-folio-sisai" placeholder="340026700191225"></div>
+        <div class="fg"><label>Año</label><input class="fi" type="number" id="ff-anio" placeholder="2026"></div>
+        <div class="fg"><label>Fecha SISAI</label><input class="fi" id="ff-fecha-sisai" placeholder="dd.mm.yyyy"></div>
+        <div class="fg"><label>Fecha respuesta</label><input class="fi" type="date" id="ff-frespuesta"></div>
+      </div>
+      <div class="form-section">Promovente / Solicitante</div>
+      <div class="form-grid">
+        <div class="fg"><label>Nombre *</label><input class="fi" id="ff-promovente"></div>
+        <div class="fg"><label>Institución / Predio</label><input class="fi" id="ff-institucion"></div>
+        <div class="fg"><label>Municipio</label><input class="fi" id="ff-municipio"></div>
+        <div class="fg"><label>Representación Legal</label><input class="fi" id="ff-legal"></div>
+        <div class="fg full"><label>Domicilio</label><input class="fi" id="ff-domicilio"></div>
+        <div class="fg"><label>Contacto (tel/correo)</label><input class="fi" id="ff-contacto"></div>
+        <div class="fg"><label>Modalidad de respuesta</label>
+          <select class="fs" id="ff-modalidad">
+            <option value="Oficio">Oficio</option><option value="PTN">PTN</option>
+            <option value="UC">UC</option><option value="Copia simple">Copia simple</option>
+            <option value="Copia certificada">Copia certificada</option><option value="Otro">Otro</option>
+          </select></div>
+      </div>
+    </div>
+
+    <div class="mtab-content" id="t-asunto">
+      <div class="fg full" style="margin-bottom:12px;"><label>Asunto / Descripción completa</label>
+        <textarea class="fta" id="ff-asunto" rows="7" placeholder="Descripción completa de la solicitud..."></textarea></div>
+      <div class="fg full"><label>Formato de entrega solicitado</label>
+        <input class="fi" id="ff-formato" placeholder="Excel, PDF, Shapefile, Electrónico..."></div>
+    </div>
+
+    <div class="mtab-content" id="t-control">
+      <div class="form-grid">
+        <div class="fg full"><label>Número de control / Oficio de respuesta</label>
+          <input class="fi" id="ff-control" placeholder="OR-130/GA/0023/2026 o NA"></div>
+        <div class="fg full"><label>Notas de seguimiento / Acciones tomadas</label>
+          <textarea class="fta" id="ff-notas" rows="4" placeholder="Reenviado a..., Contestado por..., Enviado a PTN el..."></textarea></div>
+        <div class="fg"><label>Responsable interno</label><input class="fi" id="ff-resp" placeholder="Nombre del responsable"></div>
+        <div class="fg"><label>Estado interno detallado</label><input class="fi" id="ff-estado-det" placeholder="OK, En tramite, Enviado TVH..."></div>
+      </div>
+    </div>
+  </div>
+  <div class="mfooter">
+    <button class="btn btn-secondary" onclick="closeM('modal-form')">Cancelar</button>
+    <button class="btn btn-primary" onclick="saveRec()">💾 Guardar</button>
+  </div>
+</div></div>
+
+<!-- =============================== MODAL DETAIL =============================== -->
+<div class="overlay" id="modal-detail">
+<div class="modal modal-lg">
+  <div class="mhdr">
+    <h2 id="md-title">Detalle</h2>
+    <div style="display:flex;gap:6px;align-items:center;">
+      <button class="btn btn-secondary btn-sm" id="md-edit-btn">✏️ Editar</button>
+      <button class="btn btn-danger btn-sm" id="md-del-btn">🗑 Eliminar</button>
+      <div class="mclose" onclick="closeM('modal-detail')">✕</div>
+    </div>
+  </div>
+  <div class="mbody" id="md-body"></div>
+</div></div>
+
+<!-- =============================== MODAL SUPABASE CONFIG =============================== -->
+<div class="overlay" id="modal-config">
+<div class="modal modal-sm">
+  <div class="mhdr"><h2>⚙ Configuración Supabase</h2><div class="mclose" onclick="closeM('modal-config')">✕</div></div>
+  <div class="mbody">
+    <div class="info-box" style="margin-bottom:14px;">
+      <strong>Configuración rápida:</strong><br>
+      1. Ve a <strong>supabase.com</strong> → Crea proyecto gratis<br>
+      2. SQL Editor → pega el script SQL (botón abajo)<br>
+      3. Settings → API → copia <code>URL</code> y <code>anon public key</code><br>
+      4. Pega aquí y haz clic en <strong>Conectar</strong>
+    </div>
+    <div class="fg" style="margin-bottom:10px;"><label>Supabase URL</label>
+      <input class="fi" id="cfg-url" placeholder="https://xxxxxxxxxxxx.supabase.co"></div>
+    <div class="fg" style="margin-bottom:14px;"><label>Supabase Anon Key</label>
+      <input class="fi" id="cfg-key" placeholder="eyJhbGciOiJIUzI1NiIs..." type="password"></div>
+    <div class="config-row" style="margin-bottom:14px;">
+      <div id="cfg-status-text" style="font-size:12px;color:var(--muted);flex:1;">Sin conectar</div>
+      <button class="btn btn-secondary btn-sm" onclick="showSQL()">Ver SQL</button>
+      <button class="btn btn-blue btn-sm" onclick="testConnect()">🔗 Conectar</button>
+    </div>
+    <div id="cfg-sql-box" style="display:none;">
+      <div class="form-section">Script SQL para ejecutar en Supabase</div>
+      <textarea class="fta" id="sql-text" rows="12" readonly style="font-size:10px;font-family:monospace;background:#0d1117;"></textarea>
+      <button class="btn btn-secondary btn-sm" style="margin-top:6px;" onclick="copySQL()">📋 Copiar SQL</button>
+    </div>
+  </div>
+  <div class="mfooter">
+    <button class="btn btn-secondary" onclick="closeM('modal-config')">Cerrar</button>
+    <button class="btn btn-primary" onclick="saveConfig()">💾 Guardar configuración</button>
+  </div>
+</div></div>
+
+<script>
+// ============================================================
+//  SUPABASE CONFIG
+// ============================================================
+const SQL_SCHEMA = `-- Ejecuta esto en Supabase SQL Editor
+
+CREATE TABLE IF NOT EXISTS correspondencia (
+  id TEXT PRIMARY KEY,
+  no INTEGER,
+  fecha TEXT,
+  folio TEXT,
+  folio1 TEXT,
+  status TEXT,
+  frespuesta TEXT,
+  control TEXT,
+  formato TEXT,
+  promovente TEXT,
+  institucion TEXT,
+  municipio TEXT,
+  legal TEXT,
+  domicilio TEXT,
+  contacto TEXT,
+  area TEXT,
+  modalidad TEXT,
+  notas TEXT,
+  urgencia TEXT,
+  anio INTEGER,
+  responsable TEXT,
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE TABLE IF NOT EXISTS sisai (
+  id TEXT PRIMARY KEY,
+  no INTEGER,
+  fecha TEXT,
+  anio INTEGER,
+  modalidad TEXT,
+  situacion TEXT,
+  estado TEXT,
+  folio TEXT,
+  fecha_sisai TEXT,
+  control TEXT,
+  asunto TEXT,
+  solicitante TEXT,
+  formato_entrega TEXT,
+  notas TEXT,
+  urgencia TEXT,
+  responsable TEXT,
+  estado_det TEXT,
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- Habilitar acceso público (Row Level Security off para pruebas)
+ALTER TABLE correspondencia ENABLE ROW LEVEL SECURITY;
+ALTER TABLE sisai ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "allow_all_corr" ON correspondencia FOR ALL USING (true) WITH CHECK (true);
+CREATE POLICY "allow_all_sisai" ON sisai FOR ALL USING (true) WITH CHECK (true);`;
+
+let SB = null; // Supabase client
+let SB_CONNECTED = false;
+
+function loadConfig() {
+  const url = localStorage.getItem('sb_url');
+  const key = localStorage.getItem('sb_key');
+  if (url && key) {
+    document.getElementById('cfg-url').value = url;
+    document.getElementById('cfg-key').value = key;
+    initSupabase(url, key);
+  }
+  updateSBStatus();
+}
+
+function initSupabase(url, key) {
+  try {
+    SB = supabase.createClient(url, key);
+    SB_CONNECTED = true;
+    updateSBStatus();
+  } catch(e) {
+    SB_CONNECTED = false;
+    updateSBStatus();
+  }
+}
+
+function updateSBStatus() {
+  const dot = document.getElementById('sb-dot');
+  const txt = document.getElementById('sb-status');
+  const cfgTxt = document.getElementById('cfg-status-text');
+  if (SB_CONNECTED) {
+    dot.className = 'status-dot dot-green';
+    txt.textContent = 'Supabase conectado';
+    if (cfgTxt) cfgTxt.textContent = '✅ Conectado correctamente';
+  } else {
+    dot.className = 'status-dot dot-yellow';
+    txt.textContent = 'Modo local (sin Supabase)';
+    if (cfgTxt) cfgTxt.textContent = 'Sin conectar — usando almacenamiento local';
+  }
+}
+
+async function testConnect() {
+  const url = document.getElementById('cfg-url').value.trim();
+  const key = document.getElementById('cfg-key').value.trim();
+  if (!url || !key) { toast('Ingresa URL y Key', 'error'); return; }
+  showLoader(true);
+  try {
+    const client = supabase.createClient(url, key);
+    const { error } = await client.from('correspondencia').select('id').limit(1);
+    showLoader(false);
+    if (error && error.code !== 'PGRST116') throw error;
+    SB = client; SB_CONNECTED = true;
+    updateSBStatus();
+    toast('✅ Conexión exitosa con Supabase', 'success');
+  } catch(e) {
+    showLoader(false);
+    SB_CONNECTED = false;
+    updateSBStatus();
+    toast('❌ Error: ' + (e.message||'Verifica URL y Key'), 'error');
+  }
+}
+
+function saveConfig() {
+  const url = document.getElementById('cfg-url').value.trim();
+  const key = document.getElementById('cfg-key').value.trim();
+  if (url) localStorage.setItem('sb_url', url);
+  if (key) localStorage.setItem('sb_key', key);
+  if (url && key) initSupabase(url, key);
+  closeM('modal-config');
+  toast('⚙ Configuración guardada', 'info');
+}
+
+function showSQL() {
+  const box = document.getElementById('cfg-sql-box');
+  document.getElementById('sql-text').value = SQL_SCHEMA;
+  box.style.display = box.style.display === 'none' ? 'block' : 'none';
+}
+function copySQL() {
+  navigator.clipboard.writeText(SQL_SCHEMA).then(()=>toast('📋 SQL copiado', 'success'));
+}
+
+// ============================================================
+//  DATA STORE
+// ============================================================
+let DB = { correspondencia: [], sisai: [] };
+let editId = null, editMod = null;
+const PG = 15;
+let pgCorr = 1, pgSisai = 1;
+let sortCorr = {c:'no',d:1}, sortSisai = {c:'no',d:1};
+let filtCorr = [], filtSisai = [];
+let charts = {};
+
+// ============================================================
+//  SEED DATA
+// ============================================================
+function seedData() {
+  DB.correspondencia = [
+    {id:'C1',no:1,fecha:'2025-11-20',folio:'2025',folio1:'0002446',status:'Concluido',frespuesta:null,control:'NA',formato:'Oficio:\nORDGO-2025/SP/0079/2025',promovente:'ADOLFO ESPINOSA FRANCO',institucion:'Fracción 2 del P.P. "La Guitarra"',municipio:'San Dimas',legal:'Apoderado Legal del C. FRANCISCO EMMANUEL YAÑEZ ANTUNA',domicilio:'Calle Belisario Domínguez No. 233, Durango',contacto:'',area:'Aprovechamientos',modalidad:'Copia certificada',notas:'Copia certificada de oficios de aprovechamiento',urgencia:'Normal',anio:2025,responsable:''},
+    {id:'C2',no:2,fecha:'2025-11-24',folio:'2025',folio1:'0002475',status:'Concluido',frespuesta:null,control:'Memorándum No. 109101910100-CE/2807/2025',formato:'Oficio:\nORDGO-2025/SP/0088/2025',promovente:'C.P. Jesus Roberto Mesta Velazquez',institucion:'Subdelegación Durango - IMSS',municipio:'-',legal:'Órgano de Operación Administrativa IMSS',domicilio:'Calle Bruno Martínez No. 379 Norte, Durango',contacto:'',area:'Consulta SNFG',modalidad:'Oficio',notas:'Oficio - No existen registros',urgencia:'Normal',anio:2025,responsable:''},
+    {id:'C3',no:3,fecha:'2025-11-18',folio:'2025',folio1:'0002408',status:'Concluido',frespuesta:null,control:'NA',formato:'Respuesta Juridico',promovente:'NICOLAS HARO FERNANDEZ',institucion:'',municipio:'',legal:'',domicilio:'',contacto:'',area:'RFN',modalidad:'Entrega de constancia',notas:'Solicita Constancia de Inscripción al RFN SG/130.2.2.2/016/2008',urgencia:'Normal',anio:2025,responsable:''},
+    {id:'C4',no:4,fecha:'2025-11-24',folio:'2025',folio1:'0002476',status:'Concluido',frespuesta:null,control:'NA',formato:'Respuesta Juridico',promovente:'COMISARIADO EJIDAL',institucion:'EJIDO PRIMERO DE MAYO',municipio:'Durango',legal:'CLAUDIA RESENDIZ GARCIA / JOSE RAÚL RODRÍGUEZ ZUÑIGA',domicilio:'',contacto:'',area:'RFN',modalidad:'Devolución documentos originales',notas:'Oficio: OR-130/GA/1383/2025 · Bitácora: 10/F4-0178/07/25',urgencia:'Normal',anio:2025,responsable:''},
+    {id:'C5',no:5,fecha:'2025-11-28',folio:'2025',folio1:'0002518',status:'Concluido',frespuesta:'2025-12-03',control:'NA',formato:'Oficio',promovente:'FRANCISCO CARRASCO SOTO',institucion:'P.P. MESA DE TAHUITOLES LOTE 5',municipio:'CANATLÁN',legal:'Propietario',domicilio:'Calle Emiliano Zapata No. 1007, Col. del Valle, Durango',contacto:'',area:'Aprovechamientos',modalidad:'Copia simple',notas:'',urgencia:'Normal',anio:2025,responsable:''},
+    {id:'C6',no:6,fecha:'2025-11-26',folio:'2025',folio1:'0002488',status:'Concluido',frespuesta:'2025-12-03',control:'NA',formato:'Oficio',promovente:'JESUS DE LOS RIOS VENEGAS',institucion:'EJIDO PUENTECILLAS',municipio:'San Dimas',legal:'Comisariado Ejidal',domicilio:'',contacto:'',area:'Aprovechamientos',modalidad:'Copia simple',notas:'Copia del Programa de Manejo Forestal, anexos y documentación legal',urgencia:'Normal',anio:2025,responsable:''},
+    {id:'C7',no:7,fecha:'2025-12-01',folio:'2025',folio1:'0002531',status:'Concluido',frespuesta:'2025-12-03',control:'NA',formato:'Oficio',promovente:'MIGUEL ANGEL BRECEDA RIOS',institucion:'',municipio:'',legal:'',domicilio:'',contacto:'',area:'Impacto Ambiental',modalidad:'Copia simple',notas:'Bitacora: 10/DC-0135/05/2023 — Copia simple totalidad de constancias',urgencia:'Normal',anio:2025,responsable:''},
+    {id:'C8',no:8,fecha:'2025-12-02',folio:'2025',folio1:'0002541',status:'Concluido',frespuesta:'2025-12-03',control:'NA',formato:'Oficio:\nOR-130/GA/0008/2026',promovente:'RAQUEL QUIÑONEZ PEÑA',institucion:'SG/130.2.2.2/001751/23',municipio:'',legal:'Propietario',domicilio:'',contacto:'',area:'RFN',modalidad:'Devolución documentos originales',notas:'Instrumentos consistentes poderes generales para pleitos y cobranzas',urgencia:'Normal',anio:2025,responsable:''},
+    {id:'C9',no:9,fecha:'2025-12-05',folio:'2025',folio1:'0002589',status:'Concluido',frespuesta:null,control:'NA',formato:'Oficio',promovente:'ADOLFO ESPINOSA FRANCO',institucion:'',municipio:'',legal:'Apoderado Legal del C. FRANCISCO EMMANUEL YAÑEZ ANTUNA',domicilio:'',contacto:'',area:'',modalidad:'',notas:'Solicita documentación legal y remisiones',urgencia:'Normal',anio:2025,responsable:''},
+    {id:'C10',no:10,fecha:'2026-01-08',folio:'2026',folio1:'0000051',status:'Concluido',frespuesta:'2026-01-30',control:'NA',formato:'Oficio\nOR-130/GA/0023/2026',promovente:'JUAN ANTONIO LOZANO BENAVIDES',institucion:'FRACC. 3-B FRACCIONAMIENTO MIRAVALLES',municipio:'SAN DIMAS',legal:'Albacea de ANTONIO LOZANO MELENDEZ',domicilio:'Calle Prolongación Libertad No. 801, Col. Los Sauces, Durango',contacto:'',area:'Aprovechamientos',modalidad:'Copia simple / Informe',notas:'Bitacoras: 10/AS-1937/09/09 · 10/AQ-0532/01/23 · 10/F5-0339/05/22',urgencia:'Normal',anio:2026,responsable:''},
+    {id:'C11',no:11,fecha:'2026-01-09',folio:'2026',folio1:'0000082',status:'Concluido',frespuesta:'2026-01-14',control:'NA',formato:'Oficio:\nOR-130/GA/0011/2026',promovente:'JORGE ALBERTO MAGALLANES JIMÉNEZ',institucion:'CLUB DE CAZA Y TIRO "GRAL. VICENTE GUERRERO" A.C.',municipio:'VICENTE GUERRERO',legal:'Presidente del Club',domicilio:'Calle Florencio Salas #215, Zona Centro, Vicente Guerrero',contacto:'675 1004384 / ing_ja_magallanes@hotmail.com',area:'Vida Silvestre',modalidad:'Copia certificada',notas:'Registro SEDENA #359 · Registro SARH 859-XII',urgencia:'Normal',anio:2026,responsable:''},
+    {id:'C12',no:12,fecha:'2026-01-13',folio:'2026',folio1:'0000137',status:'Concluido',frespuesta:'2026-01-29',control:'NA',formato:'Oficio\nOR-130/GA/0012/2026',promovente:'GREGORIO ARZOLA RIVERA',institucion:'EJIDO EL ZORRILLO Y ANEXOS',municipio:'GUANACEVI',legal:'CERTIFICADO DE DERECHOS DE USO COMÚN',domicilio:'',contacto:'618 266 8244',area:'Aprovechamientos',modalidad:'Oficio',notas:'Oficio de autorización: SG/130.2.2.2/002784/19 · Bitácora: 10/C9-0486/10/19',urgencia:'Normal',anio:2026,responsable:''},
+    {id:'C13',no:13,fecha:'2026-01-22',folio:'2026',folio1:'0000315',status:'Concluido',frespuesta:'2026-01-30',control:'NA',formato:'Oficio\nOR-130/GA/0025/2026',promovente:'ING. JUAN BORJAS CASTILLO',institucion:'Ejido NCPE Alma Campesina',municipio:'Tlahualilo',legal:'Responsable Técnico Forestal',domicilio:'',contacto:'',area:'No maderables',modalidad:'Oficio',notas:'',urgencia:'Normal',anio:2026,responsable:''},
+    {id:'C14',no:14,fecha:'2026-01-22',folio:'2026',folio1:'0000323',status:'Concluido',frespuesta:'2026-02-03',control:'NA',formato:'Oficio\nOR-130/GA/0026/2026',promovente:'CLAUDIA E. GALLARDO / JOSE A. HERNANDEZ / JOSÉ T. OCHOA',institucion:'Ejido NCPE BAJIO DE DON VICTOR',municipio:'Durango',legal:'Ejidatarios',domicilio:'',contacto:'',area:'Aprovechamientos',modalidad:'Oficio',notas:'Permisos, contratos, guías y autorizaciones 2025 del ejido',urgencia:'Normal',anio:2026,responsable:''},
+    {id:'C15',no:15,fecha:'2026-01-22',folio:'2026',folio1:'0000312',status:'Concluido',frespuesta:'2026-01-26',control:'NA',formato:'Oficio\nOR-130/GA/0015/2026',promovente:'HUGO ENRIQUE ISAIS CASTRO',institucion:'PIMVS "RANCHO LA CAMPANA"',municipio:'Durango',legal:'Titular del PIMVS',domicilio:'Calle La Campana No. 100, La Campana CP:34306',contacto:'618 152 2809 / hugo_7897@hotmail.com',area:'Vida Silvestre',modalidad:'Oficio',notas:'Devolución de documentos originales',urgencia:'Normal',anio:2026,responsable:''},
+    {id:'C16',no:16,fecha:'2026-01-27',folio:'2026',folio1:'0000360',status:'Concluido',frespuesta:'2026-01-29',control:'NA',formato:'Oficio\nOR-130/GA/0020/2026',promovente:'JESUS ASTORGA ALVARADO',institucion:'P.P. EL PALMITO',municipio:'San Dimas',legal:'Representante Legal',domicilio:'',contacto:'',area:'Aprovechamientos',modalidad:'Oficio',notas:'Copia simple del Último Oficio de Validación de Remisiones Forestales Anualidad 2025',urgencia:'Normal',anio:2026,responsable:''},
+    {id:'C17',no:17,fecha:'2026-02-03',folio:'2026',folio1:'0000394',status:'Concluido',frespuesta:'2026-02-05',control:'NA',formato:'Oficio\nOR-130/GA/0028/2026',promovente:'FRANCISCO GONZALEZ PATIÑO',institucion:'EJIDO PUEBLO NUEVO',municipio:'Pueblo Nuevo',legal:'Presidente del Comisariado Ejidal',domicilio:'Calle Ingeniero Blanco S/N, El Salto, Pueblo Nuevo',contacto:'Ing. Jose Luis Coria Quiñones / 6751056741',area:'Impacto Ambiental',modalidad:'Oficio',notas:'Copia Certificada del Oficio No. SG/130.2.1.1/001589 de fecha 12 de agosto de 2005',urgencia:'Normal',anio:2026,responsable:''},
+    {id:'C18',no:18,fecha:'2026-02-10',folio:'2026',folio1:'0000476',status:'Concluido',frespuesta:'2026-02-11',control:'NA',formato:'Oficio\nOR-130/GA/0028/2026',promovente:'EDWIN ROSENDO BARRAZA AGUIRRE',institucion:'CAT',municipio:'NI',legal:'Titular',domicilio:'NI',contacto:'NI',area:'RFN',modalidad:'Oficio',notas:'SINAT · Copia certificada del oficio No. OR-130/GA/1320/2025 Bitácora 10/N2-0179/08/25',urgencia:'Normal',anio:2026,responsable:''},
+    {id:'C19',no:19,fecha:'2026-02-13',folio:'2026',folio1:'0000509',status:'Concluido',frespuesta:'2026-02-20',control:'NA',formato:'OR-130/GA/0043/2026',promovente:'Barbara Rocío Orozco Gurrola',institucion:'FIRA Residencia Estatal Durango',municipio:'Durango',legal:'',domicilio:'Ana Leyva #204, 3er Piso Int. 317, Plaza Las Torres, Col. Nueva Vizcaya',contacto:'NI',area:'RFC',modalidad:'Oficio',notas:'SINAT',urgencia:'Normal',anio:2026,responsable:''},
+    {id:'C20',no:20,fecha:'2026-02-17',folio:'2026',folio1:'0000532',status:'Concluido',frespuesta:'2026-02-20',control:'NA',formato:'OR-130/GA/0044/2026',promovente:'GILBERTO VILLAR SAENZ',institucion:'EJIDO TABACOTES, OCAMPO',municipio:'OCAMPO',legal:'CERTIFICADO DE DERECHOS DE USO COMÚN',domicilio:'',contacto:'618 266 8244',area:'Aprovechamientos',modalidad:'Oficio',notas:'Acta de finiquito, Relación de Marqueo, Programa de manejo y autorizaciones',urgencia:'Normal',anio:2026,responsable:''},
+    {id:'C21',no:21,fecha:'2026-02-17',folio:'2026',folio1:'0000533',status:'Concluido',frespuesta:'2026-02-20',control:'NA',formato:'OR-130/GA/0045/2026',promovente:'GREGORIO ARZOLA RIVERA',institucion:'EJIDO EL ZORRILLO Y ANEXOS',municipio:'GUANACEVI',legal:'CERTIFICADO DE DERECHOS DE USO COMÚN',domicilio:'',contacto:'618 266 8244',area:'Aprovechamientos',modalidad:'Oficio',notas:'Relación de Marqueo, Acta de Finiquito, Saldo inicial y Saldo Final',urgencia:'Normal',anio:2026,responsable:''},
+    {id:'C22',no:22,fecha:'2026-02-18',folio:'2026',folio1:'0000547',status:'Concluido',frespuesta:'2026-02-23',control:'NA',formato:'OR-130/GA/0046/2026',promovente:'Alionso Ávila Rivera',institucion:'P.P. Las Lajas, Tamazula',municipio:'Tamazula',legal:'Copropietario',domicilio:'NI',contacto:'NI',area:'Aprovechamientos',modalidad:'Oficio',notas:'Copia y/o acceso a Programa de Manejo Forestal (Bitácora 10/AS-0410/07/16)',urgencia:'Normal',anio:2026,responsable:''},
+    {id:'C23',no:23,fecha:'2026-02-19',folio:'2026',folio1:'0000559',status:'En proceso',frespuesta:'2026-02-23',control:'NA',formato:'',promovente:'JORGE VARGAS QUINTANA',institucion:'Ejido Santa Teresa de la Uña, Nazas',municipio:'Nazas',legal:'Acta de Asamblea',domicilio:'',contacto:'618 274 7893 / M.C. Raymundo F. Ramírez Roacho',area:'Aprovechamientos',modalidad:'Oficio',notas:'Devolución de documentos originales: ADDATE y Acta de Elección de Autoridades Ejidales',urgencia:'Alta',anio:2026,responsable:''},
+  ];
+
+  DB.sisai = [
+    {id:'S1',no:1,fecha:'2025-11-12',anio:2025,modalidad:'Oficio',situacion:'Cerrado',estado:'En tramite',folio:'340026700191225',fecha_sisai:'05.11.2025',control:'Reenviado a Ruben',asunto:'Solicito información respecto a los Programas de Manejo Forestal (PMF) registrados en todas las delegaciones de la SEMARNAT. Listado completo de PMF vigentes y no vigentes incluyendo: número de registro, título, nombre del solicitante, fecha de registro, estado de vigencia, tipo de aprovechamiento, superficie, municipio y coordenadas.',solicitante:'DGGFSOE Y TODAS LAS ORES',formato_entrega:'Cualquier otro método incluido los electrónicos',notas:'',urgencia:'Normal',responsable:'',estado_det:'En tramite'},
+    {id:'S2',no:2,fecha:null,anio:null,modalidad:null,situacion:'Cerrado',estado:'OK',folio:'340026700185125',fecha_sisai:null,control:'Juridico',asunto:'Solicito información en archivo SHAPEFILE: relación de autorizaciones y no autorizaciones de Programas de Manejo Forestal no Maderable emitidas por la SEMARNAT. Especie, técnicas de aprovechamiento, madurez de cosecha, tipo de vegetación.',solicitante:null,formato_entrega:'SHAPEFILE',notas:'',urgencia:'Normal',responsable:'',estado_det:'OK'},
+    {id:'S3',no:3,fecha:'2025-12-01',anio:2025,modalidad:'PTN',situacion:'Cerrado',estado:'OK',folio:'340026700187125',fecha_sisai:null,control:'Juridico',asunto:'Listado de permisos vigentes para aprovechamiento de linaloe (Bursera linanoe), copal, cuachalalate (Amphipterygium adstringens): Bitácora, Tipo de permiso, Titular, Predio, Municipio, Entidad federativa, Volumen autorizado, Vigencia, Prestador de servicios forestales.',solicitante:null,formato_entrega:'No se reporta información en Durango de las especies',notas:'',urgencia:'Normal',responsable:'',estado_det:'OK'},
+    {id:'S4',no:4,fecha:'2025-12-08',anio:2025,modalidad:'PTN',situacion:'Cerrado',estado:'OK',folio:'340026700236925',fecha_sisai:'05.12.2025',control:'Consulta en SNFG: 03-005 avisos vigentes (82). Enviado RLO. Contesto RLO',asunto:'Relación de autorizaciones vigentes de aprovechamiento de hierba de candelilla (Euphorbia antisiphyllitica Zucc.) de Coahuila, Nuevo León, Zacatecas, Durango y Chihuahua. Incluye: fecha de autorización, fecha de vencimiento, Número de oficio, Volumen de cerote por anualidad, nombre del prestador.',solicitante:'Estimados Enlaces de Acceso a la Información',formato_entrega:'Electrónico PNT',notas:'',urgencia:'Normal',responsable:'',estado_det:'OK'},
+    {id:'S5',no:5,fecha:'2025-12-10',anio:2025,modalidad:'PTN',situacion:'Cerrado',estado:'OK',folio:'340026700251125',fecha_sisai:'09.12.2025',control:'Reenviado Elias: 15.01.2025',asunto:'Se solicita nombre del proyecto, número de bitácora, y resolutivo de las autorizaciones en materia de impacto ambiental modalidad particular con estudio de riesgo de los últimos 10 años, referentes a centrales de generación de energía.',solicitante:'DGIRA Y TODAS LAS ORES',formato_entrega:'Electrónico PNT',notas:'',urgencia:'Normal',responsable:'',estado_det:'OK'},
+    {id:'S6',no:6,fecha:'2025-12-17',anio:2025,modalidad:'PTN',situacion:'Cerrado',estado:'Seguimiento URGENTE',folio:'340026700273125',fecha_sisai:'17.12.2025',control:'Revisar con AR. Enviado a PTN el 30.01.2025. OBS PTN-Pendiente Clasificacion',asunto:'Información digital en cada oficina de representación: archivos shapefile, programas de manejo y autorización de impacto ambiental a partir del 24 de abril de 2025, donde ya es requisito obligatorio entregar archivos shapefile y copia digital.',solicitante:'DGIRA, DGGFSOE Y TODAS LAS ORES',formato_entrega:'Cualquier otro medio',notas:'',urgencia:'Urgente',responsable:'',estado_det:'Seguimiento URGENTE'},
+    {id:'S7',no:7,fecha:'2025-12-18',anio:2025,modalidad:'PTN',situacion:'Cerrado',estado:'OK',folio:'340026700260125',fecha_sisai:'11.12.2025',control:'Reenviado a Ruben: 15.01.2025. Enviada directamente a PTN el 29.01.2026',asunto:'Archivo shapefile correspondiente a autorizaciones y no autorizaciones de los Programas de Manejo Forestal Maderable emitidas por la SEMARNAT desde el histórico disponible hasta el más reciente, abarcando todas las Oficinas de Representación.',solicitante:'DGGFSOE Y TODAS LAS ORES',formato_entrega:'Cualquier otro medio',notas:'',urgencia:'Normal',responsable:'',estado_det:'OK'},
+    {id:'S8',no:8,fecha:'2025-12-18',anio:2025,modalidad:'PTN',situacion:'Cerrado',estado:'Enviado TVH',folio:'340026700260225',fecha_sisai:'11.12.2025',control:'Contestado directamente por correo electrónico. TVH 29.01.2026',asunto:'Archivo shapefile de autorizaciones y no autorizaciones de aprovechamientos de recursos forestales no maderables desde el histórico disponible hasta el más reciente en todas las Oficinas de Representación.',solicitante:'DGGFSOE Y TODAS LAS ORES',formato_entrega:'Cualquier otro medio',notas:'',urgencia:'Normal',responsable:'',estado_det:'Enviado TVH'},
+    {id:'S9',no:9,fecha:'2025-12-24',anio:2025,modalidad:'PTN',situacion:'Cerrado',estado:'Urgente',folio:'340026700255025',fecha_sisai:'11.12.2025',control:'Seguimiento URGENTE. Enviado directamente a PTN',asunto:'Información detallada sobre niveles de eficiencia, tiempos de resolución, estatus y bitácoras documentales de trámites ambientales del ejercicio 2025: trámites forestales, impacto ambiental, vida silvestre, residuos peligrosos, calidad del aire y ZOFEMAT.',solicitante:'DGIRA, DGGFSOE, DGVS, DGGIMAR, DGIELGCA Y TODAS LAS ORES',formato_entrega:'Electrónico PNT',notas:'',urgencia:'Urgente',responsable:'',estado_det:'Urgente'},
+    {id:'S10',no:10,fecha:'2026-01-14',anio:2026,modalidad:'Oficio',situacion:'Cerrado',estado:'OK',folio:'Folio 20251002VAGADI',fecha_sisai:'31.12.2025',control:'Oficio No. UCPPVSDH/0476/2025. Oficio GA/0027/2026 de fecha 15 de enero de 2026',asunto:'Incorporación de Panuco de Coronado al TPS (Tren de Pasajeros del Sur)',solicitante:'Titular de la Unidad Coordinadora de Proyectos Prioritarios',formato_entrega:'C. Arturo Gerardo Valles Gándara',notas:'',urgencia:'Normal',responsable:'',estado_det:'OK'},
+    {id:'S11',no:11,fecha:null,anio:2026,modalidad:'PTN',situacion:'Cerrado',estado:'En proceso',folio:'340026700005326',fecha_sisai:'01.07.2026',control:'Sin seguimiento. Enviada directamente a PTN el 04.02.2026',asunto:'Listado de autorizaciones de aprovechamiento de Recursos Forestales no Maderables vigentes en Chihuahua, Durango, Zacatecas, Coahuila, San Luis Potosí y Nuevo León. Especie autorizada, nombre del predio, superficie, fecha de autorización y expiración.',solicitante:'CHIHUAHUA, DURANGO, ZACATECAS, COAHUILA, SLP, NL',formato_entrega:'Electrónico PNT',notas:'',urgencia:'Normal',responsable:'',estado_det:'En proceso'},
+    {id:'S12',no:12,fecha:'2026-01-13',anio:2026,modalidad:'PTN',situacion:'Cerrado',estado:'OK',folio:'340026700010326',fecha_sisai:'01.07.2026',control:'Reenviado Elias: 14.01.2025. Enviada directamente a PTN el 04.02.2026',asunto:'Para fines académicos: Listado de personas jurídicas a las cuales les fue negada autorización en materia de impacto ambiental a nivel nacional solo durante 2025.',solicitante:'DGIRA Y TODAS LAS ORES',formato_entrega:'Electrónico PNT',notas:'',urgencia:'Normal',responsable:'',estado_det:'OK'},
+    {id:'S13',no:13,fecha:'2026-01-13',anio:2026,modalidad:'PTN',situacion:'Cerrado',estado:'En tramite',folio:'340026700005926',fecha_sisai:'01.07.2026',control:'Reenviado a Ruben: 14.01.2025. OBS de PTN-Ok',asunto:'Relación de archivos digitales disponibles de Programas de Manejo Forestal Maderable, DTU, oficios de autorización, informes de aprovechamiento, requerimientos de información adicional, anexos y shapefiles desde el histórico hasta el 24 de abril de 2025.',solicitante:'DGGFSOE Y TODAS LAS ORES',formato_entrega:'Cualquier otro medio',notas:'',urgencia:'Normal',responsable:'',estado_det:'En tramite'},
+    {id:'S14',no:14,fecha:'2026-01-13',anio:2026,modalidad:'PTN',situacion:'Cerrado',estado:'OK',folio:'340026700220625',fecha_sisai:'02.12.2025',control:'Enviado a Lic. Guardado. Enviado a PNT 15.01.2026',asunto:'Aprovechamientos de litio en Durango — información completa sobre proyectos, autorizaciones y trámites.',solicitante:'DGIRA Y TODAS LAS ORES',formato_entrega:'Electrónico PNT',notas:'',urgencia:'Normal',responsable:'',estado_det:'OK'},
+    {id:'S15',no:15,fecha:'2026-01-14',anio:2026,modalidad:'UC',situacion:'Cerrado',estado:'Elaborado por Titular',folio:'SBRA/DGGFSOE/418/0027/2026',fecha_sisai:'01.14.2026',control:'Enviado por el Titular 02.04.2026',asunto:'Solicitud información estadística producción forestal maderable y no maderable: año 2024 cifras definitivas y 2025 cifras preliminares vía Excel.',solicitante:null,formato_entrega:null,notas:'',urgencia:'Normal',responsable:'',estado_det:'Elaborado por Titular'},
+    {id:'S16',no:16,fecha:'2026-01-23',anio:2026,modalidad:'PTN',situacion:'Cerrado',estado:'Para conocimiento INTERNO',folio:'340026700091025',fecha_sisai:null,control:'Recibido GA: 19.01.2026',asunto:'Solicitud pública de información sobre PMF maderable para ecosistemas templado frío con Pinus patula y bosque de pino-encino, periodo 2023-2025, conforme a NOM-152-SEMARNAT-2023.',solicitante:null,formato_entrega:null,notas:'',urgencia:'Normal',responsable:'',estado_det:'Para conocimiento INTERNO'},
+    {id:'S17',no:17,fecha:'2026-01-30',anio:2026,modalidad:'PTN',situacion:'Cerrado',estado:'En proceso',folio:'34002670003442',fecha_sisai:'29 de enero de 2026',control:'Reenviado a Fidel Soto 01.30.2026. Enviada directamente a PTN el 04.02.2026',asunto:'Información sobre gasto en arrendamiento de inmuebles: domicilio de cada inmueble, costo mensual de renta por mes 2025, enero 2026 y enero 2019. Clave de los contratos de arrendamiento.',solicitante:'DGRMIS Y TODAS LAS ORES',formato_entrega:'Electrónico PNT',notas:'',urgencia:'Normal',responsable:'',estado_det:'En proceso'},
+    {id:'S18',no:18,fecha:'2026-02-09',anio:2026,modalidad:'PTN',situacion:'Cerrado',estado:'En proceso',folio:'340026700052726',fecha_sisai:'5 de Febrero de 2026',control:'Reenviado a Ruben, Alfredo, Edna el 02.09.2026',asunto:'Información sobre extracción de tierra de monte del periodo enero 2007 al 5 de febrero de 2026, desglosada por año, entidad y cantidad.',solicitante:'DGGFSOE Y TODAS LAS ORES',formato_entrega:'Electrónico PNT',notas:'',urgencia:'Normal',responsable:'',estado_det:'En proceso'},
+    {id:'S19',no:19,fecha:'2026-02-13',anio:2026,modalidad:'PTN',situacion:'Cerrado',estado:'En proceso',folio:'340026700061926',fecha_sisai:'02.12.2026',control:'Enviada a Ruben-Alfredo. Enviada directamente a PTN el 16.02.2026',asunto:'Complemento de solicitud 340026700236925: candelilla en Coahuila y Durango. Se omitió solicitar nombre del ejido/predio y municipio. Se solicita esa información para esos estados.',solicitante:'Estimados Enlaces de Coahuila y Durango',formato_entrega:'Electrónico PNT',notas:'',urgencia:'Normal',responsable:'',estado_det:'En proceso'},
+    {id:'S20',no:20,fecha:'2026-02-19',anio:2026,modalidad:'PTN',situacion:'Cerrado',estado:'En proceso',folio:'340026700074126',fecha_sisai:'02.16.2026',control:'Envio a Ruben Lozano: 02.16.2026. Enviada directamente a PTN el 23.02.2026',asunto:'Cantidad mínima de sitios de muestreo por Unidad Mínima de Manejo, por tipo de vegetación y entidad federativa, para PMF Maderable en clima templado, tropical y mixto.',solicitante:'DGGFSOE y TODAS LAS ORES',formato_entrega:'Cualquier otro medio',notas:'',urgencia:'Normal',responsable:'',estado_det:'En proceso'},
+    {id:'S21',no:21,fecha:'2026-02-19',anio:2026,modalidad:'PTN',situacion:'Cerrado',estado:'En proceso',folio:'340026700073926',fecha_sisai:'02.16.2026',control:'Envio a Ruben Lozano/Elias: 02.16.2026. Enviada directamente a PTN el 23.02.2026',asunto:'Expedientes administrativos de ETJ, DTU y MIA promovidos por entes públicos en Oficinas de Representación de SEMARNAT, periodo enero 2020 a la fecha. Nombre del proyecto, tipo de instrumento, promovente, entidad, número de expediente, fechas.',solicitante:'DGGFSOE, DGIRA Y TODAS LAS ORES',formato_entrega:'Electrónico PNT',notas:'',urgencia:'Normal',responsable:'',estado_det:'En proceso'},
+    {id:'S22',no:22,fecha:'2026-02-23',anio:2026,modalidad:'PTN',situacion:'Open',estado:null,folio:'340026700079226',fecha_sisai:'02.19.2026',control:null,asunto:'Información sobre plazos de resolución en materia forestal: documento normativo aplicado, evidencia de aplicación institucional y control administrativo en las 31 Oficinas de Representación.',solicitante:'DGGFSOE Y TODAS LAS ORES',formato_entrega:'Electrónico PNT',notas:'',urgencia:'Alta',responsable:'',estado_det:''},
+    {id:'S23',no:23,fecha:'2026-02-23',anio:2026,modalidad:'PTN',situacion:'Open',estado:null,folio:'340026700078926',fecha_sisai:'02.19.2026',control:null,asunto:'Cumplimiento del plazo legal de 60 días hábiles en trámites CUSTF: número total de trámites ingresados, resueltos dentro del plazo, fuera del plazo y porcentaje de cumplimiento por Oficina de Representación / entidad federativa.',solicitante:'DGGFSOE Y TODAS LAS ORES',formato_entrega:'Electrónico PNT',notas:'',urgencia:'Alta',responsable:'',estado_det:''},
+    {id:'S24',no:24,fecha:'2026-02-23',anio:2026,modalidad:'PTN',situacion:'Open',estado:null,folio:'340026700078826',fecha_sisai:'02.19.2026',control:null,asunto:'Relación nacional de trámites CUSTF fuera de plazo legal (más de un año de retraso) sin resolución emitida. Información por trámite: entidad, número de expediente, fechas, días de retraso, estado actual, causa del retraso y responsable.',solicitante:'DGGFSOE, DGIRA Y TODAS LAS ORES',formato_entrega:'Electrónico PNT',notas:'',urgencia:'Alta',responsable:'',estado_det:''},
+  ];
+}
+
+// ============================================================
+//  LOCAL STORAGE
+// ============================================================
+function saveLoc() { try { localStorage.setItem('semarnat_db_v2', JSON.stringify(DB)); } catch(e){} }
+function loadLoc() {
+  try {
+    const d = localStorage.getItem('semarnat_db_v2');
+    if (d) { DB = JSON.parse(d); return true; }
+  } catch(e){}
+  return false;
+}
+
+// ============================================================
+//  SUPABASE SYNC
+// ============================================================
+async function syncAll() {
+  if (!SB_CONNECTED) { toast('Supabase no configurado — usando datos locales', 'info'); return; }
+  showLoader(true);
+  try {
+    // Pull from Supabase
+    const { data: corrData, error: e1 } = await SB.from('correspondencia').select('*').order('no');
+    const { data: sisaiData, error: e2 } = await SB.from('sisai').select('*').order('no');
+    if (e1) throw e1;
+    if (e2) throw e2;
+    if (corrData && corrData.length > 0) DB.correspondencia = corrData;
+    if (sisaiData && sisaiData.length > 0) DB.sisai = sisaiData;
+    saveLoc();
+    document.getElementById('last-sync').textContent = new Date().toLocaleTimeString('es-MX');
+    showLoader(false);
+    refreshAll();
+    toast('✅ Sincronizado con Supabase', 'success');
+  } catch(e) {
+    showLoader(false);
+    toast('⚠ Error sync: ' + (e.message||e), 'error');
+  }
+}
+
+async function pushRecord(table, record) {
+  if (!SB_CONNECTED) return;
+  try {
+    const { error } = await SB.from(table).upsert(record, { onConflict: 'id' });
+    if (error) throw error;
+  } catch(e) {
+    console.error('Supabase push error:', e);
+    toast('⚠ No se pudo sincronizar con Supabase: ' + (e.message||''), 'error');
+  }
+}
+
+async function deleteFromSB(table, id) {
+  if (!SB_CONNECTED) return;
+  try {
+    const { error } = await SB.from(table).delete().eq('id', id);
+    if (error) throw error;
+  } catch(e) {
+    console.error('Supabase delete error:', e);
+  }
+}
+
+// ============================================================
+//  INIT
+// ============================================================
+window.onload = async function() {
+  loadConfig();
+  if (!loadLoc()) seedData();
+  refreshAll();
+  document.getElementById('dash-fecha').textContent = new Date().toLocaleString('es-MX', {weekday:'short',year:'numeric',month:'short',day:'numeric',hour:'2-digit',minute:'2-digit'});
+  // Auto-sync on load if Supabase configured
+  if (SB_CONNECTED) {
+    setTimeout(syncAll, 800);
+  }
+};
+
+function refreshAll() {
+  calcStats();
+  renderDash();
+  renderCorr();
+  renderSisai();
+  renderReportes();
+  renderCharts();
+  document.getElementById('total-regs').textContent = DB.correspondencia.length + DB.sisai.length;
+}
+
+// ============================================================
+//  NAVIGATION
+// ============================================================
+function goView(name) {
+  document.querySelectorAll('.view').forEach(v=>v.classList.remove('active'));
+  document.querySelectorAll('.nav-btn').forEach(b=>b.classList.remove('active'));
+  document.getElementById('view-'+name).classList.add('active');
+  const nm = ['dashboard','correspondencia','sisai','reportes'];
+  document.querySelectorAll('.nav-btn')[nm.indexOf(name)]?.classList.add('active');
+}
+
+// ============================================================
+//  STATUS HELPERS
+// ============================================================
+function grp(r, mod) {
+  const s = ((mod==='c' ? r.status : (r.situacion||r.estado||''))||'').toLowerCase();
+  if (s.includes('concluido')||s==='ok'||s.includes('cerrado')) return 'done';
+  if (s.includes('proceso')||s.includes('tramite')||s.includes('elaborado')||s.includes('enviado')) return 'proceso';
+  if (s.includes('open')||s.includes('abierto')) return 'open';
+  if (s.includes('urgente')) return 'urgente';
+  return 'otro';
+}
+function badge(s, extra='') {
+  if (!s) return `<span class="badge bg-gray">Sin estado</span>`;
+  const sl = s.toLowerCase();
+  let cls = 'bg-gray';
+  if (sl.includes('concluido')||sl==='ok'||sl.includes('cerrado')) cls='bg-green';
+  else if (sl.includes('proceso')||sl.includes('tramite')||sl.includes('elaborado')) cls='bg-yellow';
+  else if (sl.includes('open')||sl.includes('abierto')) cls='bg-red';
+  else if (sl.includes('urgente')) cls='bg-red';
+  else if (sl.includes('enviado')) cls='bg-blue';
+  else cls='bg-purple';
+  return `<span class="badge ${cls} ${extra}">${s}</span>`;
+}
+function fD(d) {
+  if (!d) return '—';
+  if (typeof d === 'string' && d.includes('-') && d.length>=10) {
+    const [y,m,dd] = d.split('-');
+    return `${dd}/${m}/${y}`;
+  }
+  return d;
+}
+
+// ============================================================
+//  STATS
+// ============================================================
+function calcStats() {
+  const all = [...DB.correspondencia.map(r=>({...r,_m:'c'})),...DB.sisai.map(r=>({...r,_m:'s'}))];
+  const done = all.filter(r=>grp(r,r._m)==='done').length;
+  const proceso = all.filter(r=>grp(r,r._m)==='proceso').length;
+  const open = all.filter(r=>['open','urgente','otro'].includes(grp(r,r._m))).length;
+  document.getElementById('s-total').textContent = all.length;
+  document.getElementById('s-done').textContent = done;
+  document.getElementById('s-proceso').textContent = proceso;
+  document.getElementById('s-open').textContent = open;
+  document.getElementById('s-sisai').textContent = DB.sisai.length;
+}
+
+// ============================================================
+//  DASHBOARD
+// ============================================================
+function renderDash() {
+  // Urgentes
+  const urg = [
+    ...DB.correspondencia.filter(r=>r.urgencia==='Urgente'||r.urgencia==='Alta'||r.status==='En proceso').map(r=>({...r,_m:'Corr'})),
+    ...DB.sisai.filter(r=>r.urgencia==='Urgente'||r.urgencia==='Alta'||r.situacion==='Open').map(r=>({...r,_m:'SISAI'}))
+  ].slice(0,8);
+
+  const uc = document.getElementById('urgentes-container');
+  if (!urg.length) {
+    uc.innerHTML = `<div class="empty"><div class="empty-icon">✅</div><p>Sin solicitudes urgentes</p></div>`;
+  } else {
+    uc.innerHTML = `<div class="urgentes-list">${urg.map(r=>`
+      <div class="urgente-item" onclick="openDetail('${r.id}','${r._m==='Corr'?'correspondencia':'sisai'}')">
+        <div class="u-dot" style="background:${r.urgencia==='Urgente'?'var(--red-t)':'var(--warn)'}"></div>
+        <div style="flex:1;min-width:0;">
+          <div style="font-size:12px;font-weight:500;" class="truncate">${r._m==='Corr'?r.promovente:(r.asunto||'').substring(0,60)+'...'}</div>
+          <div style="font-size:10px;color:var(--muted);">${r._m==='Corr'?r.folio1:r.folio} · ${fD(r.fecha)}</div>
+        </div>
+        <span class="badge ${r._m==='Corr'?'bg-blue':'bg-purple'}">${r._m}</span>
+      </div>`).join('')}</div>`;
+  }
+
+  // Reciente
+  const all = [...DB.correspondencia.slice(-6).reverse().map(r=>({...r,_m:'c'})),
+    ...DB.sisai.slice(-4).reverse().map(r=>({...r,_m:'s'}))].slice(0,8);
+  const rc = document.getElementById('reciente-container');
+  rc.innerHTML = `<table><thead><tr><th>Módulo</th><th>Folio</th><th>Promovente</th><th>Estado</th></tr></thead><tbody>${
+    all.map(r=>`<tr onclick="openDetail('${r.id}','${r._m==='c'?'correspondencia':'sisai'}')">
+      <td>${badge(r._m==='c'?'Corr':'SISAI','bg-blue')}</td>
+      <td class="mono">${r._m==='c'?r.folio1:r.folio}</td>
+      <td style="max-width:160px;" class="truncate">${r._m==='c'?r.promovente:(r.solicitante||'—')}</td>
+      <td>${badge(r._m==='c'?r.status:r.situacion)}</td>
+    </tr>`).join('')
+  }</tbody></table>`;
+}
+
+// ============================================================
+//  CORRESPONDENCIA TABLE
+// ============================================================
+function renderCorr() {
+  filtCorr = [...DB.correspondencia];
+  applyFiltCorr();
+}
+function filt(t) { t==='corr' ? applyFiltCorr() : applyFiltSisai(); }
+function applyFiltCorr() {
+  const q = document.getElementById('q-corr').value.toLowerCase();
+  const st = document.getElementById('f-corr-st').value;
+  const ar = document.getElementById('f-corr-ar').value;
+  const yr = document.getElementById('f-corr-yr').value;
+  filtCorr = DB.correspondencia.filter(r => {
+    const m = !q||[r.folio1,r.promovente,r.municipio,r.area,r.notas,r.control].join(' ').toLowerCase().includes(q);
+    return m && (!st||r.status===st) && (!ar||r.area===ar) && (!yr||String(r.anio)===yr);
+  });
+  pgCorr = 1; renderCorrTb();
+}
+function renderCorrTb() {
+  const sorted = sortA(filtCorr, sortCorr.c, sortCorr.d);
+  const total = sorted.length;
+  const pg = Math.ceil(total/PG)||1;
+  const sl = sorted.slice((pgCorr-1)*PG, pgCorr*PG);
+  document.getElementById('corr-count').textContent = total+' registros';
+  document.getElementById('corr-fi').textContent = `${Math.min((pgCorr-1)*PG+1,total)}–${Math.min(pgCorr*PG,total)} de ${total}`;
+  const tb = document.getElementById('tb-corr');
+  tb.innerHTML = !sl.length ? `<tr><td colspan="9"><div class="empty"><div class="empty-icon">🔍</div><p>Sin resultados</p></div></td></tr>` :
+    sl.map(r=>`<tr onclick="openDetail('${r.id}','correspondencia')">
+      <td class="mono muted">${r.no}</td>
+      <td class="muted nobr">${fD(r.fecha)}</td>
+      <td class="mono">${r.folio1||'—'}</td>
+      <td style="max-width:160px;" class="truncate">${r.promovente||'—'}</td>
+      <td class="muted">${r.municipio||'—'}</td>
+      <td>${r.area?`<span class="badge bg-purple">${r.area}</span>`:'—'}</td>
+      <td>${badge(r.status)}</td>
+      <td class="muted" style="font-size:11px;max-width:120px;" class="truncate">${(r.modalidad||'').substring(0,25)||'—'}</td>
+      <td onclick="event.stopPropagation()" class="nobr">
+        <button class="btn btn-secondary btn-sm btn-icon" onclick="openEditModal('${r.id}','correspondencia')" title="Editar">✏️</button>
+        <button class="btn btn-danger btn-sm btn-icon" onclick="delRec('${r.id}','correspondencia')" title="Eliminar">🗑</button>
+      </td>
+    </tr>`).join('');
+  renderPg('corr', pg);
+}
+function srt(t, c) {
+  if (t==='corr') { if(sortCorr.c===c) sortCorr.d*=-1; else {sortCorr.c=c;sortCorr.d=1;} renderCorrTb(); }
+  else { if(sortSisai.c===c) sortSisai.d*=-1; else {sortSisai.c=c;sortSisai.d=1;} renderSisaiTb(); }
+}
+function sortA(arr,c,d) {
+  return [...arr].sort((a,b)=>{
+    let va=a[c],vb=b[c];
+    if(va==null) return 1; if(vb==null) return -1;
+    return typeof va==='string' ? va.localeCompare(vb)*d : (va-vb)*d;
+  });
+}
+function renderPg(t, pg) {
+  const curr = t==='corr'?pgCorr:pgSisai;
+  const el = document.getElementById('pg-'+t);
+  let h='';
+  for(let i=1;i<=Math.min(pg,8);i++) h+=`<button class="page-btn${i===curr?' active':''}" onclick="${t==='corr'?'pgCorr':'pgSisai'}=${i};render${t==='corr'?'CorrTb':'SisaiTb'}()">${i}</button>`;
+  if(pg>8) h+=`<span style="padding:3px 6px;color:var(--muted);font-size:11px;">...${pg}</span>`;
+  el.innerHTML = h;
+}
+
+// ============================================================
+//  SISAI TABLE
+// ============================================================
+function renderSisai() {
+  filtSisai = [...DB.sisai];
+  applyFiltSisai();
+}
+function applyFiltSisai() {
+  const q = document.getElementById('q-sisai').value.toLowerCase();
+  const st = document.getElementById('f-sisai-st').value;
+  const md = document.getElementById('f-sisai-md').value;
+  const yr = document.getElementById('f-sisai-yr').value;
+  filtSisai = DB.sisai.filter(r => {
+    const m = !q||[r.folio,r.asunto,r.solicitante,r.control].join(' ').toLowerCase().includes(q);
+    return m && (!st||(r.situacion===st||r.estado===st)) && (!md||r.modalidad===md) && (!yr||String(r.anio)===yr);
+  });
+  pgSisai = 1; renderSisaiTb();
+}
+function renderSisaiTb() {
+  const sorted = sortA(filtSisai, sortSisai.c, sortSisai.d);
+  const total = sorted.length;
+  const pg = Math.ceil(total/PG)||1;
+  const sl = sorted.slice((pgSisai-1)*PG, pgSisai*PG);
+  document.getElementById('sisai-count').textContent = total+' registros';
+  document.getElementById('sisai-fi').textContent = `${Math.min((pgSisai-1)*PG+1,total)}–${Math.min(pgSisai*PG,total)} de ${total}`;
+  const tb = document.getElementById('tb-sisai');
+  tb.innerHTML = !sl.length ? `<tr><td colspan="9"><div class="empty"><div class="empty-icon">🔍</div><p>Sin resultados</p></div></td></tr>` :
+    sl.map(r=>`<tr onclick="openDetail('${r.id}','sisai')">
+      <td class="mono muted">${r.no||'—'}</td>
+      <td class="muted nobr">${fD(r.fecha)||'—'}</td>
+      <td class="mono" style="font-size:10px;max-width:160px;" class="truncate">${r.folio||'—'}</td>
+      <td>${r.modalidad?`<span class="badge bg-purple">${r.modalidad}</span>`:'—'}</td>
+      <td>${badge(r.situacion)}</td>
+      <td style="max-width:150px;font-size:10px;" class="truncate muted">${r.estado||'—'}</td>
+      <td style="max-width:160px;" class="truncate">${r.solicitante||'—'}</td>
+      <td style="max-width:150px;font-size:10px;" class="truncate muted">${(r.control||'').substring(0,50)||'—'}</td>
+      <td onclick="event.stopPropagation()" class="nobr">
+        <button class="btn btn-secondary btn-sm btn-icon" onclick="openEditModal('${r.id}','sisai')" title="Editar">✏️</button>
+        <button class="btn btn-danger btn-sm btn-icon" onclick="delRec('${r.id}','sisai')" title="Eliminar">🗑</button>
+      </td>
+    </tr>`).join('');
+  renderPg('sisai', pg);
+}
+
+// ============================================================
+//  REPORTES
+// ============================================================
+function renderReportes() {
+  const c = DB.correspondencia, s = DB.sisai;
+  const total = c.length + s.length;
+  const cD = c.filter(r=>grp(r,'c')==='done').length;
+  const sD = s.filter(r=>grp(r,'s')==='done').length;
+  const done = cD+sD;
+  const tasa = total ? Math.round(done/total*100) : 0;
+  document.getElementById('r-tasa').textContent = tasa+'%';
+  document.getElementById('r-c25').textContent = c.filter(r=>r.anio===2025).length;
+  document.getElementById('r-c26').textContent = c.filter(r=>r.anio===2026).length;
+  document.getElementById('r-s25').textContent = s.filter(r=>r.anio===2025).length;
+  document.getElementById('r-s26').textContent = s.filter(r=>r.anio===2026).length;
+
+  const cP = c.filter(r=>grp(r,'c')==='proceso').length;
+  const cO = c.filter(r=>['open','urgente','otro'].includes(grp(r,'c'))).length;
+  const sP = s.filter(r=>grp(r,'s')==='proceso').length;
+  const sO = s.filter(r=>['open','urgente','otro'].includes(grp(r,'s'))).length;
+
+  document.getElementById('tb-resumen').innerHTML = `
+    <tr>
+      <td><span class="badge bg-blue">Correspondencia</span></td>
+      <td class="mono">${c.length}</td><td class="mono">${cD}</td>
+      <td class="mono">${cP}</td><td class="mono">${cO}</td>
+      <td>${badge(Math.round(cD/c.length*100)||0>=80?'✔ '+(Math.round(cD/c.length*100)||0)+'%':'⚠ '+(Math.round(cD/c.length*100)||0)+'%')}</td>
+    </tr>
+    <tr>
+      <td><span class="badge bg-purple">SISAI / PTN</span></td>
+      <td class="mono">${s.length}</td><td class="mono">${sD}</td>
+      <td class="mono">${sP}</td><td class="mono">${sO}</td>
+      <td>${badge(Math.round(sD/s.length*100)||0>=80?'✔ '+(Math.round(sD/s.length*100)||0)+'%':'⚠ '+(Math.round(sD/s.length*100)||0)+'%')}</td>
+    </tr>
+    <tr style="background:rgba(255,255,255,.025)">
+      <td><strong>TOTAL</strong></td>
+      <td class="mono"><strong>${total}</strong></td>
+      <td class="mono"><strong>${done}</strong></td>
+      <td class="mono"><strong>${cP+sP}</strong></td>
+      <td class="mono"><strong>${cO+sO}</strong></td>
+      <td><span class="badge ${tasa>=80?'bg-green':'bg-yellow'}">${tasa}%</span></td>
+    </tr>`;
+}
+
+// ============================================================
+//  CHARTS
+// ============================================================
+function renderCharts() {
+  Object.values(charts).forEach(ch=>{ try{ch.destroy()}catch(e){} });
+  charts = {};
+
+  const cD=DB.correspondencia.filter(r=>grp(r,'c')==='done').length;
+  const cP=DB.correspondencia.filter(r=>grp(r,'c')==='proceso').length;
+  const sD=DB.sisai.filter(r=>grp(r,'s')==='done').length;
+  const sP=DB.sisai.filter(r=>grp(r,'s')==='proceso').length;
+  const sO=DB.sisai.filter(r=>['open','urgente'].includes(grp(r,'s'))).length;
+  mkBar('ch-estado',['Corr. Concluida','Corr. En proceso','SISAI Cerrada','SISAI En proceso','SISAI Abierta'],[cD,cP,sD,sP,sO],['#3fb950','#d29922','#58a6ff','#bc8cff','#f85149']);
+
+  const ar={};
+  DB.correspondencia.forEach(r=>{ if(r.area){ar[r.area]=(ar[r.area]||0)+1;} });
+  mkDough('ch-area',Object.keys(ar),Object.values(ar));
+
+  const md={};
+  DB.sisai.forEach(r=>{ if(r.modalidad){md[r.modalidad]=(md[r.modalidad]||0)+1;} });
+  mkDough('ch-mod',Object.keys(md),Object.values(md),['#58a6ff','#bc8cff','#3fb950','#d29922']);
+
+  mkBar('r-ch-area',Object.keys(ar),Object.values(ar),['#3fb950','#58a6ff','#bc8cff','#d29922','#f85149','#3fb950','#58a6ff','#bc8cff']);
+
+  const st={};
+  [...DB.correspondencia.map(r=>r.status||'Sin estado'),...DB.sisai.map(r=>r.situacion||r.estado||'Sin estado')]
+    .forEach(s=>{st[s]=(st[s]||0)+1;});
+  mkDough('r-ch-est',Object.keys(st),Object.values(st));
+
+  const mu={};
+  DB.correspondencia.forEach(r=>{ const m=r.municipio; if(m&&m!=='-'&&m!=='NI'&&m) mu[m]=(mu[m]||0)+1; });
+  const topM=Object.entries(mu).sort((a,b)=>b[1]-a[1]).slice(0,8);
+  mkBar('r-ch-mun',topM.map(m=>m[0]),topM.map(m=>m[1]),Array(8).fill('#58a6ff'));
+
+  // Monthly
+  const months={};
+  [...DB.correspondencia,...DB.sisai].forEach(r=>{
+    if(r.fecha&&r.fecha.length>=7){ const k=r.fecha.substring(0,7); months[k]=(months[k]||0)+1; }
+  });
+  const mk=Object.keys(months).sort();
+  mkBar('r-ch-mes',mk.map(k=>{const[y,m]=k.split('-');return m+'/'+y.slice(2);}),mk.map(k=>months[k]),Array(mk.length).fill('#d29922'));
+}
+
+const PALETTE = ['#3fb950','#58a6ff','#bc8cff','#d29922','#f85149','#79c0ff','#ffa657','#ff7b72'];
+function mkBar(id,labels,data,colors) {
+  const ctx=document.getElementById(id); if(!ctx) return;
+  charts[id]=new Chart(ctx,{type:'bar',data:{labels,datasets:[{data,backgroundColor:colors||PALETTE,borderRadius:4,borderSkipped:false}]},
+    options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},
+    scales:{x:{ticks:{color:'#7d8590',font:{size:9}},grid:{color:'#21262d'}},y:{ticks:{color:'#7d8590',font:{size:9}},grid:{color:'#21262d'}}}}});
+}
+function mkDough(id,labels,data,colors) {
+  const ctx=document.getElementById(id); if(!ctx) return;
+  charts[id]=new Chart(ctx,{type:'doughnut',data:{labels,datasets:[{data,backgroundColor:colors||PALETTE,borderColor:'#161b22',borderWidth:2}]},
+    options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'right',labels:{color:'#7d8590',font:{size:9},padding:6,boxWidth:8}}}}});
+}
+
+// ============================================================
+//  DETAIL MODAL
+// ============================================================
+let detailId=null, detailMod=null;
+function openDetail(id, mod) {
+  detailId=id; detailMod=mod;
+  const r=(mod==='correspondencia'?DB.correspondencia:DB.sisai).find(x=>x.id===id);
+  if(!r) return;
+  document.getElementById('md-edit-btn').onclick=()=>{ closeM('modal-detail'); openEditModal(id,mod); };
+  document.getElementById('md-del-btn').onclick=()=>{ if(confirm('¿Eliminar este registro?')){ closeM('modal-detail'); delRec(id,mod); } };
+  let h='';
+  if(mod==='correspondencia') {
+    document.getElementById('md-title').textContent=`Correspondencia — Folio ${r.folio1||r.no}`;
+    h=`<div class="detail-section"><div class="ds-title">Identificación</div>
+      <div class="detail-grid">
+        <div class="di"><label>No. / Folio</label><span class="mono">${r.no} · ${r.folio1||'—'}</span></div>
+        <div class="di"><label>Estado</label><span>${badge(r.status)}</span></div>
+        <div class="di"><label>Fecha recibido</label><span>${fD(r.fecha)}</span></div>
+        <div class="di"><label>Fecha respuesta</label><span>${fD(r.frespuesta)||'Pendiente'}</span></div>
+        <div class="di"><label>Área temática</label><span>${r.area||'—'}</span></div>
+        <div class="di"><label>Urgencia</label><span>${badge(r.urgencia||'Normal')}</span></div>
+        <div class="di full"><label>No. de control / Oficio</label><span class="mono">${r.control||'—'}</span></div>
+      </div></div>
+    <div class="detail-section"><div class="ds-title">Promovente</div>
+      <div class="detail-grid">
+        <div class="di full"><label>Nombre</label><span>${r.promovente||'—'}</span></div>
+        <div class="di full"><label>Institución / Predio</label><span>${r.institucion||'—'}</span></div>
+        <div class="di"><label>Municipio</label><span>${r.municipio||'—'}</span></div>
+        <div class="di"><label>Representación Legal</label><span>${r.legal||'—'}</span></div>
+        <div class="di full"><label>Domicilio</label><span>${r.domicilio||'—'}</span></div>
+        <div class="di"><label>Contacto</label><span>${r.contacto||'—'}</span></div>
+        <div class="di"><label>Modalidad de respuesta</label><span>${r.modalidad||'—'}</span></div>
+      </div></div>
+    <div class="detail-section"><div class="ds-title">Notas y seguimiento</div>
+      <div class="asunto-box">${r.notas||'Sin notas registradas'}</div>
+    </div>`;
+  } else {
+    document.getElementById('md-title').textContent=`SISAI — ${r.folio||r.no}`;
+    h=`<div class="detail-section"><div class="ds-title">Identificación</div>
+      <div class="detail-grid">
+        <div class="di"><label>No.</label><span class="mono">${r.no||'—'}</span></div>
+        <div class="di"><label>Situación</label><span>${badge(r.situacion)}</span></div>
+        <div class="di full"><label>Folio SISAI</label><span class="mono">${r.folio||'—'}</span></div>
+        <div class="di"><label>Fecha recibido UGA</label><span>${fD(r.fecha)||'—'}</span></div>
+        <div class="di"><label>Fecha SISAI</label><span>${r.fecha_sisai||'—'}</span></div>
+        <div class="di"><label>Modalidad</label><span>${r.modalidad?`<span class="badge bg-purple">${r.modalidad}</span>`:'—'}</span></div>
+        <div class="di"><label>Urgencia</label><span>${badge(r.urgencia||'Normal')}</span></div>
+        <div class="di"><label>Responsable</label><span>${r.responsable||'—'}</span></div>
+      </div></div>
+    <div class="detail-section"><div class="ds-title">Estado del trámite</div>
+      <div class="detail-grid">
+        <div class="di full"><label>Estado detallado</label><div class="asunto-box">${r.estado||'—'}</div></div>
+        <div class="di full"><label>Control interno</label><div class="asunto-box">${r.control||'—'}</div></div>
+      </div></div>
+    <div class="detail-section"><div class="ds-title">Solicitud</div>
+      <div class="detail-grid">
+        <div class="di full"><label>Solicitante / Dirección respondedora</label><span>${r.solicitante||'—'}</span></div>
+        <div class="di full"><label>Formato de entrega solicitado</label><span>${r.formato_entrega||'—'}</span></div>
+        <div class="di full"><label>Asunto completo</label><div class="asunto-box">${r.asunto||'—'}</div></div>
+      </div></div>
+    <div class="detail-section"><div class="ds-title">Notas adicionales</div>
+      <div class="asunto-box">${r.notas||'Sin notas'}</div>
+    </div>`;
+  }
+  document.getElementById('md-body').innerHTML=h;
+  document.getElementById('modal-detail').classList.add('open');
+}
+
+// ============================================================
+//  FORM MODAL
+// ============================================================
+function mTab(id) {
+  document.querySelectorAll('.mtab').forEach(t=>t.classList.remove('active'));
+  document.querySelectorAll('.mtab-content').forEach(t=>t.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+  const tabs=['t-tipo','t-datos','t-asunto','t-control'];
+  document.querySelectorAll('.mtab')[tabs.indexOf(id)]?.classList.add('active');
+}
+
+function openNewModal(defMod) {
+  editId=null; editMod=null;
+  document.getElementById('mf-title').textContent='Nueva Solicitud';
+  clearF();
+  if(defMod) document.getElementById('ff-modulo').value=defMod;
+  document.getElementById('ff-fecha').value=new Date().toISOString().split('T')[0];
+  document.getElementById('ff-anio').value=new Date().getFullYear();
+  mTab('t-tipo');
+  document.getElementById('modal-form').classList.add('open');
+}
+
+function openEditModal(id, mod) {
+  editId=id; editMod=mod;
+  const r=(mod==='correspondencia'?DB.correspondencia:DB.sisai).find(x=>x.id===id);
+  if(!r) return;
+  document.getElementById('mf-title').textContent='Editar Solicitud';
+  document.getElementById('ff-modulo').value=mod;
+  document.getElementById('ff-status').value=mod==='correspondencia'?(r.status||''):(r.situacion||'');
+  document.getElementById('ff-urgencia').value=r.urgencia||'Normal';
+  document.getElementById('ff-area').value=r.area||'';
+  document.getElementById('ff-fecha').value=r.fecha||'';
+  document.getElementById('ff-folio').value=mod==='correspondencia'?(r.folio1||''):(r.folio||'');
+  document.getElementById('ff-folio-sisai').value=mod==='sisai'?(r.folio||''):'';
+  document.getElementById('ff-anio').value=r.anio||'';
+  document.getElementById('ff-fecha-sisai').value=mod==='sisai'?(r.fecha_sisai||''):'';
+  document.getElementById('ff-frespuesta').value=r.frespuesta||'';
+  document.getElementById('ff-promovente').value=mod==='correspondencia'?(r.promovente||''):(r.solicitante||'');
+  document.getElementById('ff-institucion').value=r.institucion||'';
+  document.getElementById('ff-municipio').value=r.municipio||'';
+  document.getElementById('ff-legal').value=r.legal||'';
+  document.getElementById('ff-domicilio').value=r.domicilio||'';
+  document.getElementById('ff-contacto').value=r.contacto||'';
+  document.getElementById('ff-modalidad').value=r.modalidad||'Oficio';
+  document.getElementById('ff-asunto').value=mod==='correspondencia'?(r.notas||''):(r.asunto||'');
+  document.getElementById('ff-formato').value=r.formato_entrega||r.formato||'';
+  document.getElementById('ff-control').value=r.control||'';
+  document.getElementById('ff-notas').value=r.notas||'';
+  document.getElementById('ff-resp').value=r.responsable||'';
+  document.getElementById('ff-estado-det').value=r.estado_det||r.estado||'';
+  mTab('t-tipo');
+  document.getElementById('modal-form').classList.add('open');
+}
+
+function clearF() {
+  ['ff-modulo','ff-status','ff-urgencia','ff-area','ff-fecha','ff-folio','ff-folio-sisai','ff-anio','ff-fecha-sisai','ff-frespuesta','ff-promovente','ff-institucion','ff-municipio','ff-legal','ff-domicilio','ff-contacto','ff-modalidad','ff-asunto','ff-formato','ff-control','ff-notas','ff-resp','ff-estado-det']
+    .forEach(id=>{ const e=document.getElementById(id); if(e) e.value=''; });
+  document.getElementById('ff-urgencia').value='Normal';
+  document.getElementById('ff-modalidad').value='Oficio';
+}
+
+async function saveRec() {
+  const mod = document.getElementById('ff-modulo').value;
+  const isE = !!editId;
+  const newId = isE ? editId : (mod==='correspondencia'?'C':'S')+Date.now();
+
+  if(mod==='correspondencia') {
+    const prev = isE ? DB.correspondencia.find(x=>x.id===editId) : {};
+    const r = {
+      ...prev, id:newId,
+      no: prev.no || DB.correspondencia.length+1,
+      fecha: document.getElementById('ff-fecha').value,
+      folio: document.getElementById('ff-anio').value,
+      folio1: document.getElementById('ff-folio').value,
+      anio: parseInt(document.getElementById('ff-anio').value)||null,
+      status: document.getElementById('ff-status').value,
+      frespuesta: document.getElementById('ff-frespuesta').value||null,
+      promovente: document.getElementById('ff-promovente').value,
+      institucion: document.getElementById('ff-institucion').value,
+      municipio: document.getElementById('ff-municipio').value,
+      legal: document.getElementById('ff-legal').value,
+      domicilio: document.getElementById('ff-domicilio').value,
+      contacto: document.getElementById('ff-contacto').value,
+      area: document.getElementById('ff-area').value,
+      modalidad: document.getElementById('ff-modalidad').value,
+      formato: document.getElementById('ff-formato').value,
+      control: document.getElementById('ff-control').value,
+      notas: document.getElementById('ff-asunto').value,
+      responsable: document.getElementById('ff-resp').value,
+      urgencia: document.getElementById('ff-urgencia').value,
+    };
+    if(!isE) DB.correspondencia.push(r);
+    else { const idx=DB.correspondencia.findIndex(x=>x.id===editId); DB.correspondencia[idx]=r; }
+    saveLoc(); await pushRecord('correspondencia', r);
+  } else {
+    const prev = isE ? DB.sisai.find(x=>x.id===editId) : {};
+    const r = {
+      ...prev, id:newId,
+      no: prev.no || DB.sisai.length+1,
+      fecha: document.getElementById('ff-fecha').value,
+      anio: parseInt(document.getElementById('ff-anio').value)||null,
+      modalidad: document.getElementById('ff-modalidad').value,
+      situacion: document.getElementById('ff-status').value,
+      estado: document.getElementById('ff-estado-det').value,
+      estado_det: document.getElementById('ff-estado-det').value,
+      folio: document.getElementById('ff-folio-sisai').value||document.getElementById('ff-folio').value,
+      fecha_sisai: document.getElementById('ff-fecha-sisai').value,
+      control: document.getElementById('ff-control').value,
+      asunto: document.getElementById('ff-asunto').value,
+      solicitante: document.getElementById('ff-promovente').value,
+      formato_entrega: document.getElementById('ff-formato').value,
+      notas: document.getElementById('ff-notas').value,
+      urgencia: document.getElementById('ff-urgencia').value,
+      responsable: document.getElementById('ff-resp').value,
+    };
+    if(!isE) DB.sisai.push(r);
+    else { const idx=DB.sisai.findIndex(x=>x.id===editId); DB.sisai[idx]=r; }
+    saveLoc(); await pushRecord('sisai', r);
+  }
+
+  closeM('modal-form');
+  refreshAll();
+  toast(isE ? '✅ Registro actualizado' : '✅ Registro guardado correctamente', 'success');
+}
+
+async function delRec(id, mod) {
+  if(!confirm('¿Eliminar este registro permanentemente?')) return;
+  if(mod==='correspondencia') DB.correspondencia=DB.correspondencia.filter(r=>r.id!==id);
+  else DB.sisai=DB.sisai.filter(r=>r.id!==id);
+  saveLoc();
+  await deleteFromSB(mod==='correspondencia'?'correspondencia':'sisai', id);
+  refreshAll();
+  toast('🗑 Registro eliminado', 'info');
+}
+
+// ============================================================
+//  EXPORT
+// ============================================================
+function exportCSV() {
+  let csv='\uFEFF'; // BOM for Excel
+  csv+='Módulo,No.,Fecha,Folio,Promovente/Solicitante,Estado/Situación,Área/Modalidad,Municipio,Control,Urgencia\n';
+  DB.correspondencia.forEach(r=>{
+    csv+=`Correspondencia,${r.no},"${r.fecha||''}","${r.folio1||''}","${(r.promovente||'').replace(/"/g,'""')}","${r.status||''}","${r.area||''}","${r.municipio||''}","${(r.control||'').replace(/"/g,'""')}","${r.urgencia||''}"\n`;
+  });
+  DB.sisai.forEach(r=>{
+    csv+=`SISAI,${r.no||''},"${r.fecha||''}","${r.folio||''}","${(r.solicitante||'').replace(/"/g,'""')}","${r.situacion||''}","${r.modalidad||''}","","${(r.control||'').replace(/"/g,'""')}","${r.urgencia||''}"\n`;
+  });
+  const a=document.createElement('a');
+  a.href=URL.createObjectURL(new Blob([csv],{type:'text/csv;charset=utf-8;'}));
+  a.download='control_transparencia_'+new Date().toISOString().slice(0,10)+'.csv';
+  a.click();
+  toast('⬇ CSV exportado correctamente', 'success');
+}
+
+// ============================================================
+//  UTILS
+// ============================================================
+function closeM(id) { document.getElementById(id).classList.remove('open'); }
+function openConfigModal() {
+  const url=localStorage.getItem('sb_url')||'';
+  const key=localStorage.getItem('sb_key')||'';
+  document.getElementById('cfg-url').value=url;
+  document.getElementById('cfg-key').value=key;
+  document.getElementById('cfg-sql-box').style.display='none';
+  document.getElementById('modal-config').classList.add('open');
+}
+function showLoader(s) { document.getElementById('loader').className='loader'+(s?' show':''); }
+function toast(msg, type='success') {
+  const el=document.getElementById('toast');
+  el.textContent=msg; el.className='toast '+type; el.style.display='block';
+  setTimeout(()=>{ el.style.display='none'; }, 3500);
+}
+
+// Close overlays on backdrop click
+document.querySelectorAll('.overlay').forEach(ov=>{
+  ov.addEventListener('click', e=>{ if(e.target===ov) ov.classList.remove('open'); });
+});
+</script>
+
+<!-- FOOTER -->
+<div style="background:var(--surface);border-top:1px solid var(--border);padding:5px 20px;font-size:10px;color:var(--muted);display:flex;gap:20px;align-items:center;flex-wrap:wrap;">
+  <span>🌿 <strong style="color:var(--text2)">SEMARNAT Durango</strong> · OR-130 · Unidad de Transparencia MRV</span>
+  <span>📖 GitHub Pages: sube este HTML como <code style="background:var(--bg);padding:1px 4px;border-radius:3px;">index.html</code> → repo → Settings → Pages</span>
+  <span>🗄 Supabase: configura credenciales con el botón <strong>⚙ Supabase</strong> para sincronización en la nube</span>
+  <span style="margin-left:auto;">v2.0 · 2026</span>
+</div>
+</body>
+</html>
